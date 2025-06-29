@@ -73,4 +73,31 @@ Key dependencies:
 
 ## Development Status
 
-The project is in early bootstrap phase with placeholder implementations in main.rs, the migration library, and entity definitions.
+**Phase 1 Complete**: Foundation with CLI structure, database migrations, and entity generation.
+
+Current state:
+- ✅ Multi-mode CLI (Migration, Service, Worker, Jobs)
+- ✅ Database migrations for core entities (User, Bot, Match, etc.)
+- ✅ Generated SeaORM entities from database schema
+- ✅ Health check endpoints
+- ✅ Docker Compose development environment
+
+## Development Environment Setup
+
+Use the provided development tools:
+
+```bash
+# Using justfile (if available)
+just dev-setup
+
+# Or using bash script
+./dev-setup.sh dev-setup
+```
+
+Available commands:
+- `db-up` - Start PostgreSQL database
+- `migrate-up` - Apply database migrations  
+- `generate` - Generate entities from schema
+- `build` - Build the project
+- `serve` - Start the service
+- `dev-reset` - Reset everything and regenerate
