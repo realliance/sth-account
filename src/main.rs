@@ -1,17 +1,24 @@
-use clap::{Parser, Subcommand};
+use clap::Parser;
 use std::process;
 use tracing::info;
 
+mod api;
+mod auth;
 mod cli;
 mod config;
+mod database;
 mod error;
 mod health;
 mod jobs;
 mod service;
+mod session_store;
+#[cfg(test)]
+mod session_store_tests;
+#[cfg(test)]
+mod test_utils;
 mod worker;
 
 use cli::{Cli, Commands};
-use error::Result;
 
 #[tokio::main]
 async fn main() {

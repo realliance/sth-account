@@ -42,7 +42,7 @@ migrate-up: db-up
     #!/usr/bin/env bash
     export DATABASE_URL="postgresql://sth_user:sth_password@localhost:5432/sth_account"
     export RUST_LOG="info"
-    nix develop --command bash -c "cargo run -- migration up"
+    nix develop --command bash -c "cargo run -p migration -- up"
 
 # Rollback last migration
 migrate-down: db-up

@@ -11,7 +11,7 @@ migration = { path = "migration" }
 entity = { path = "entity" }
 tokio = { version = "1", features = ["full"] }
 clap = { version = "4.5", features = ["derive"] }
-axum = "0.8"
+axum = "0.7"
 tower = "0.5"
 tower-http = { version = "0.6", features = ["cors", "trace"] }
 tracing = "0.1"
@@ -22,6 +22,13 @@ uuid = { version = "1.0", features = ["v4", "serde"] }
 anyhow = "1.0"
 thiserror = "1.0"
 chrono = { version = "0.4", features = ["serde"] }
+argon2 = "0.5"
+jsonwebtoken = "9.2"
+axum-login = "0.15"
+tower-sessions = "0.12"
+tower-sessions-memory-store = "0.12"
+async-trait = "0.1"
+time = "0.3"
 
 [dependencies.sea-orm]
 version = "1.1.0"
@@ -33,5 +40,14 @@ features = [
   "with-time",
   "with-json",
   "with-uuid",
-  "postgres-array"
+  "postgres-array",
+  "mock"
 ]
+
+[dev-dependencies]
+tokio-test = "0.4"
+tower = { version = "0.5", features = ["util"] }
+hyper = { version = "0.14", features = ["full"] }
+axum-test = "14.0"
+reqwest = { version = "0.12", features = ["json", "cookies"] }
+reqwest_cookie_store = "0.8"

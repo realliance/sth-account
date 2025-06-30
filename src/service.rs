@@ -1,16 +1,77 @@
-use axum::{routing::get, Router};
+use axum::{
+    routing::{delete, get, patch, post},
+    Router,
+};
+use axum_login::AuthManagerLayerBuilder;
+use tower::ServiceBuilder;
 use tower_http::trace::TraceLayer;
+use tower_sessions::{Expiry, SessionManagerLayer};
 use tracing::info;
 
-use crate::{config::Config, error::Result, health};
+use std::sync::Arc;
+use crate::{
+    api::{auth as auth_handlers, bots, users},
+    auth::Backend,
+    config::Config,
+    database,
+    error::Result,
+    health,
+    session_store::SeaOrmSessionStore,
+};
 
 pub async fn run_service() -> Result<()> {
     let config = Config::from_env()?;
+    let db = Arc::new(database::establish_connection(&config).await?);
     
-    let app = Router::new()
+    // Session store using our custom SeaORM implementation
+    let session_store = SeaOrmSessionStore::new(db.clone());
+    
+    let session_layer = SessionManagerLayer::new(session_store)
+        .with_secure(false) // Set to true in production with HTTPS
+        .with_expiry(Expiry::OnInactivity(time::Duration::hours(24)));
+
+    // Auth backend
+    let backend = Backend::new(db.clone());
+    let auth_layer = AuthManagerLayerBuilder::new(backend, session_layer).build();
+
+    // API routes
+    let api_routes = Router::new()
+        // Authentication routes
+        .route("/auth/login", post(auth_handlers::login))
+        .route("/auth/logout", post(auth_handlers::logout))
+        .route("/auth/me", get(auth_handlers::me))
+        
+        // User routes
+        .route("/users", post(users::create_user))
+        .route("/users/:id", get(users::get_user))
+        .route("/users/:id", patch(users::update_user))
+        .route("/users/:id", delete(users::delete_user))
+        
+        // Bot routes
+        .route("/bots", post(bots::create_bot))
+        .route("/bots/:id", get(bots::get_bot))
+        .route("/bots/:id", patch(bots::update_bot))
+        .route("/bots/:id", delete(bots::delete_bot))
+        .route("/users/:id/bots", get(bots::get_user_bots))
+        
+        .with_state(db.clone());
+
+    // Public routes (no auth required)
+    let public_routes = Router::new()
         .route("/health", get(health::health_check))
         .route("/ready", get(health::readiness_check))
-        .layer(TraceLayer::new_for_http());
+        .route("/auth/login", post(auth_handlers::login))
+        .route("/users", post(users::create_user)) // Registration is public
+        .with_state(db);
+
+    let app = Router::new()
+        .nest("/api/v1", api_routes)
+        .merge(public_routes)
+        .layer(
+            ServiceBuilder::new()
+                .layer(TraceLayer::new_for_http())
+                .layer(auth_layer),
+        );
 
     let bind_addr = format!("{}:{}", config.bind_address, config.bind_port);
     info!("Starting service on {}", bind_addr);
