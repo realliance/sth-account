@@ -11,11 +11,12 @@ pub mod test_utils {
     use uuid::Uuid;
     use axum::http::Method;
     use serde_json::json;
+    use reqwest_cookie_store::{CookieStore, CookieStoreMutex};
+    use reqwest::Client;
 
     use crate::{
         api::{auth as auth_handlers, bots, users},
         auth::Backend,
-        session_store::SeaOrmSessionStore,
     };
     use entity::{bot, user};
 
@@ -143,5 +144,79 @@ pub mod test_utils {
         let _ = login_test_user(&server, &user.username, "password123").await;
         
         server
+    }
+
+    /// Create an authenticated reqwest client that maintains cookies
+    pub async fn create_authenticated_client(base_url: &str, username: &str, password: &str) -> Result<Client, Box<dyn std::error::Error>> {
+        // Create a cookie store
+        let cookie_store = CookieStore::default();
+        let cookie_store = CookieStoreMutex::new(cookie_store);
+        let cookie_store = Arc::new(cookie_store);
+
+        // Create reqwest client with cookie support
+        let client = Client::builder()
+            .cookie_provider(Arc::clone(&cookie_store))
+            .build()?;
+
+        // Perform login to get session cookie
+        let login_data = json!({
+            "username": username,
+            "password": password
+        });
+
+        let response = client
+            .post(&format!("{}/auth/login", base_url))
+            .form(&login_data)
+            .send()
+            .await?;
+
+        if !response.status().is_success() {
+            return Err(format!("Login failed with status: {}", response.status()).into());
+        }
+
+        Ok(client)
+    }
+
+    /// Helper struct to manage test server with authenticated client
+    pub struct AuthenticatedTestClient {
+        pub server: TestServer,
+        pub client: Client,
+        pub base_url: String,
+    }
+
+    impl AuthenticatedTestClient {
+        pub async fn new(db: Arc<DatabaseConnection>, username: &str, password: &str) -> Result<Self, Box<dyn std::error::Error>> {
+            let app = create_test_app(db);
+            let server = TestServer::new(app).unwrap();
+            
+            // Get the server address - TestServer::server_address() returns Option<SocketAddr>
+            let server_addr = server.server_address()
+                .ok_or("Failed to get server address")?;
+            let base_url = format!("http://{}", server_addr);
+            
+            let client = create_authenticated_client(&base_url, username, password).await?;
+            
+            Ok(Self {
+                server,
+                client,
+                base_url,
+            })
+        }
+
+        pub async fn get(&self, path: &str) -> Result<reqwest::Response, reqwest::Error> {
+            self.client.get(&format!("{}{}", self.base_url, path)).send().await
+        }
+
+        pub async fn post(&self, path: &str, json: &serde_json::Value) -> Result<reqwest::Response, reqwest::Error> {
+            self.client.post(&format!("{}{}", self.base_url, path)).json(json).send().await
+        }
+
+        pub async fn patch(&self, path: &str, json: &serde_json::Value) -> Result<reqwest::Response, reqwest::Error> {
+            self.client.patch(&format!("{}{}", self.base_url, path)).json(json).send().await
+        }
+
+        pub async fn delete(&self, path: &str) -> Result<reqwest::Response, reqwest::Error> {
+            self.client.delete(&format!("{}{}", self.base_url, path)).send().await
+        }
     }
 }

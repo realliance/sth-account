@@ -178,7 +178,7 @@ mod tests {
     };
     use uuid::Uuid;
 
-    use crate::{session_store::SeaOrmSessionStore, test_utils::test_utils::*};
+    use crate::session_store::SeaOrmSessionStore;
     use entity::user_session;
 
     fn create_sample_record() -> Record {

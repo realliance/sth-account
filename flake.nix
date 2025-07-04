@@ -86,6 +86,7 @@
           inherit LD_LIBRARY_PATH;
           buildInputs = [
             rustToolchain
+            openssl
             pkgs.sea-orm-cli
             dive
             just

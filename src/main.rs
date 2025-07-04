@@ -13,8 +13,6 @@ mod jobs;
 mod service;
 mod session_store;
 #[cfg(test)]
-mod session_store_tests;
-#[cfg(test)]
 mod test_utils;
 mod worker;
 
