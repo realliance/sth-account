@@ -12,7 +12,8 @@ use uuid::Uuid;
 use crate::{
     auth::AuthSession,
     error::{AppError, Result},
-    queue::{QueueClient, messages::*},
+    queue::{QueueProvider, messages::*},
+    service::AppState,
 };
 use entity::{bot, lobby_pool, queue, user};
 
@@ -56,7 +57,7 @@ pub struct JoinQueueAsBotRequest {
 
 /// Join matchmaking queue as a human player
 pub async fn join_queue(
-    State(db): State<Arc<DatabaseConnection>>,
+    State(state): State<AppState>,
     auth_session: AuthSession,
     mut headers: HeaderMap,
     Json(request): Json<JoinQueueRequest>,
@@ -69,7 +70,7 @@ pub async fn join_queue(
 
     // Verify lobby exists and is active
     let lobby = lobby_pool::Entity::find_by_id(request.lobby_id)
-        .one(db.as_ref())
+        .one(state.db.as_ref())
         .await?
         .ok_or_else(|| AppError::Service("Lobby not found".to_string()))?;
 
@@ -81,7 +82,7 @@ pub async fn join_queue(
     let existing_queue = queue::Entity::find()
         .filter(queue::Column::ParticipantId.eq(current_user.id))
         .filter(queue::Column::Status.eq("Waiting"))
-        .one(db.as_ref())
+        .one(state.db.as_ref())
         .await?;
 
     if existing_queue.is_some() {
@@ -102,19 +103,22 @@ pub async fn join_queue(
         status: Set("Waiting".to_string()),
     };
 
-    let queue_model = new_queue_entry.insert(db.as_ref()).await?;
+    let queue_model = new_queue_entry.insert(state.db.as_ref()).await?;
 
-    // TODO: Send message to RabbitMQ for matchmaking service
-    // This would be implemented when we have the queue client configured
-    // let outgoing_message = OutgoingMessage::QueueJoin {
-    //     queue_id,
-    //     participant_type: ParticipantType::Human,
-    //     participant_id: current_user.id,
-    //     lobby_id: request.lobby_id,
-    //     preferred_mmr_range: request.preferred_mmr_range,
-    //     joined_at,
-    // };
-    // queue_client.publish_outgoing(&outgoing_message).await?;
+    // Send message to RabbitMQ for matchmaking service
+    let outgoing_message = OutgoingMessage::QueueJoin {
+        queue_id,
+        participant_type: ParticipantType::Human,
+        participant_id: current_user.id,
+        lobby_id: request.lobby_id,
+        preferred_mmr_range: request.preferred_mmr_range,
+        joined_at,
+    };
+    
+    // Publish to queue, but don't fail the request if queue is down
+    if let Err(e) = state.queue.publish_message(&outgoing_message).await {
+        tracing::warn!("Failed to publish QueueJoin message: {}", e);
+    }
 
     let queue_response = QueueResponse::from(queue_model);
     Ok((StatusCode::CREATED, headers, Json(queue_response)))
@@ -122,7 +126,7 @@ pub async fn join_queue(
 
 /// Join matchmaking queue as a bot
 pub async fn join_queue_as_bot(
-    State(db): State<Arc<DatabaseConnection>>,
+    State(state): State<AppState>,
     auth_session: AuthSession,
     mut headers: HeaderMap,
     Json(request): Json<JoinQueueAsBotRequest>,
@@ -135,7 +139,7 @@ pub async fn join_queue_as_bot(
 
     // Verify bot exists and is owned by current user
     let bot = bot::Entity::find_by_id(request.bot_id)
-        .one(db.as_ref())
+        .one(state.db.as_ref())
         .await?
         .ok_or_else(|| AppError::Service("Bot not found".to_string()))?;
 
@@ -149,7 +153,7 @@ pub async fn join_queue_as_bot(
 
     // Verify lobby exists and is active
     let lobby = lobby_pool::Entity::find_by_id(request.lobby_id)
-        .one(db.as_ref())
+        .one(state.db.as_ref())
         .await?
         .ok_or_else(|| AppError::Service("Lobby not found".to_string()))?;
 
@@ -161,7 +165,7 @@ pub async fn join_queue_as_bot(
     let existing_queue = queue::Entity::find()
         .filter(queue::Column::ParticipantId.eq(request.bot_id))
         .filter(queue::Column::Status.eq("Waiting"))
-        .one(db.as_ref())
+        .one(state.db.as_ref())
         .await?;
 
     if existing_queue.is_some() {
@@ -182,18 +186,22 @@ pub async fn join_queue_as_bot(
         status: Set("Waiting".to_string()),
     };
 
-    let queue_model = new_queue_entry.insert(db.as_ref()).await?;
+    let queue_model = new_queue_entry.insert(state.db.as_ref()).await?;
 
-    // TODO: Send message to RabbitMQ for matchmaking service
-    // let outgoing_message = OutgoingMessage::QueueJoin {
-    //     queue_id,
-    //     participant_type: ParticipantType::Bot,
-    //     participant_id: request.bot_id,
-    //     lobby_id: request.lobby_id,
-    //     preferred_mmr_range: request.preferred_mmr_range,
-    //     joined_at,
-    // };
-    // queue_client.publish_outgoing(&outgoing_message).await?;
+    // Send message to RabbitMQ for matchmaking service
+    let outgoing_message = OutgoingMessage::QueueJoin {
+        queue_id,
+        participant_type: ParticipantType::Bot,
+        participant_id: request.bot_id,
+        lobby_id: request.lobby_id,
+        preferred_mmr_range: request.preferred_mmr_range,
+        joined_at,
+    };
+    
+    // Publish to queue, but don't fail the request if queue is down
+    if let Err(e) = state.queue.publish_message(&outgoing_message).await {
+        tracing::warn!("Failed to publish QueueJoin message: {}", e);
+    }
 
     let queue_response = QueueResponse::from(queue_model);
     Ok((StatusCode::CREATED, headers, Json(queue_response)))
@@ -201,7 +209,7 @@ pub async fn join_queue_as_bot(
 
 /// Leave matchmaking queue
 pub async fn leave_queue(
-    State(db): State<Arc<DatabaseConnection>>,
+    State(state): State<AppState>,
     auth_session: AuthSession,
     mut headers: HeaderMap,
     Path(queue_id): Path<Uuid>,
@@ -214,7 +222,7 @@ pub async fn leave_queue(
 
     // Find the queue entry
     let queue_entry = queue::Entity::find_by_id(queue_id)
-        .one(db.as_ref())
+        .one(state.db.as_ref())
         .await?
         .ok_or_else(|| AppError::Service("Queue entry not found".to_string()))?;
 
@@ -224,7 +232,7 @@ pub async fn leave_queue(
         "Bot" => {
             // Check if current user owns the bot
             let bot = bot::Entity::find_by_id(queue_entry.participant_id)
-                .one(db.as_ref())
+                .one(state.db.as_ref())
                 .await?;
             if let Some(bot) = bot {
                 bot.owner_id == current_user.id || current_user.role == "Admin"
@@ -246,17 +254,21 @@ pub async fn leave_queue(
     }
 
     // Update queue entry status to Cancelled
-    let mut queue_update: queue::ActiveModel = queue_entry.into();
+    let mut queue_update: queue::ActiveModel = queue_entry.clone().into();
     queue_update.status = Set("Cancelled".to_string());
-    queue_update.update(db.as_ref()).await?;
+    queue_update.update(state.db.as_ref()).await?;
 
-    // TODO: Send message to RabbitMQ to notify matchmaking service
-    // let outgoing_message = OutgoingMessage::QueueLeave {
-    //     queue_id,
-    //     participant_id: queue_entry.participant_id,
-    //     left_at: Utc::now(),
-    // };
-    // queue_client.publish_outgoing(&outgoing_message).await?;
+    // Send message to RabbitMQ to notify matchmaking service
+    let outgoing_message = OutgoingMessage::QueueLeave {
+        queue_id,
+        participant_id: queue_entry.participant_id,
+        left_at: Utc::now(),
+    };
+    
+    // Publish to queue, but don't fail the request if queue is down
+    if let Err(e) = state.queue.publish_message(&outgoing_message).await {
+        tracing::warn!("Failed to publish QueueLeave message: {}", e);
+    }
 
     Ok((
         StatusCode::OK,
@@ -267,7 +279,7 @@ pub async fn leave_queue(
 
 /// Get current queue status for a user
 pub async fn get_queue_status(
-    State(db): State<Arc<DatabaseConnection>>,
+    State(state): State<AppState>,
     auth_session: AuthSession,
     mut headers: HeaderMap,
 ) -> Result<(StatusCode, HeaderMap, Json<Vec<QueueResponse>>)> {
@@ -282,13 +294,13 @@ pub async fn get_queue_status(
         .filter(queue::Column::ParticipantId.eq(current_user.id))
         .filter(queue::Column::ParticipantType.eq("Human"))
         .filter(queue::Column::Status.eq("Waiting"))
-        .all(db.as_ref())
+        .all(state.db.as_ref())
         .await?;
 
     // Get queues for bots owned by this user
     let user_bots = bot::Entity::find()
         .filter(bot::Column::OwnerId.eq(current_user.id))
-        .all(db.as_ref())
+        .all(state.db.as_ref())
         .await?;
 
     for bot in user_bots {
@@ -296,7 +308,7 @@ pub async fn get_queue_status(
             .filter(queue::Column::ParticipantId.eq(bot.id))
             .filter(queue::Column::ParticipantType.eq("Bot"))
             .filter(queue::Column::Status.eq("Waiting"))
-            .all(db.as_ref())
+            .all(state.db.as_ref())
             .await?;
         user_queues.extend(bot_queues);
     }
@@ -309,7 +321,7 @@ pub async fn get_queue_status(
 
 /// Get queue statistics for a lobby (Admin only)
 pub async fn get_lobby_queue_stats(
-    State(db): State<Arc<DatabaseConnection>>,
+    State(state): State<AppState>,
     auth_session: AuthSession,
     mut headers: HeaderMap,
     Path(lobby_id): Path<Uuid>,
@@ -329,7 +341,7 @@ pub async fn get_lobby_queue_stats(
 
     // Verify lobby exists
     let _lobby = lobby_pool::Entity::find_by_id(lobby_id)
-        .one(db.as_ref())
+        .one(state.db.as_ref())
         .await?
         .ok_or_else(|| AppError::Service("Lobby not found".to_string()))?;
 
@@ -337,7 +349,7 @@ pub async fn get_lobby_queue_stats(
     let waiting_entries = queue::Entity::find()
         .filter(queue::Column::LobbyId.eq(lobby_id))
         .filter(queue::Column::Status.eq("Waiting"))
-        .all(db.as_ref())
+        .all(state.db.as_ref())
         .await?;
 
     let human_count = waiting_entries

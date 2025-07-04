@@ -4,14 +4,14 @@ use axum::{
     response::Json,
 };
 use chrono::Utc;
-use sea_orm::{ActiveModelTrait, ColumnTrait, DatabaseConnection, EntityTrait, QueryFilter, Set};
+use sea_orm::{ActiveModelTrait, ColumnTrait, EntityTrait, QueryFilter, Set};
 use serde::{Deserialize, Serialize};
-use std::sync::Arc;
 use uuid::Uuid;
 
 use crate::{
     auth::AuthSession,
     error::{AppError, Result},
+    service::AppState,
 };
 use entity::bot;
 
@@ -68,7 +68,7 @@ pub struct UpdateBotRequest {
 }
 
 pub async fn create_bot(
-    State(db): State<Arc<DatabaseConnection>>,
+    State(state): State<AppState>,
     auth_session: AuthSession,
     mut headers: HeaderMap,
     Json(request): Json<CreateBotRequest>,
@@ -83,7 +83,7 @@ pub async fn create_bot(
     let existing_bot = bot::Entity::find()
         .filter(bot::Column::Name.eq(&request.name))
         .filter(bot::Column::OwnerId.eq(current_user.id))
-        .one(db.as_ref())
+        .one(state.db.as_ref())
         .await?;
 
     if existing_bot.is_some() {
@@ -109,21 +109,21 @@ pub async fn create_bot(
         created_at: Set(Utc::now().into()),
     };
 
-    let bot_model = new_bot.insert(db.as_ref()).await?;
+    let bot_model = new_bot.insert(state.db.as_ref()).await?;
     let bot_response = BotResponse::from(bot_model);
 
     Ok((StatusCode::CREATED, headers, Json(bot_response)))
 }
 
 pub async fn get_bot(
-    State(db): State<Arc<DatabaseConnection>>,
+    State(state): State<AppState>,
     mut headers: HeaderMap,
     Path(bot_id): Path<Uuid>,
 ) -> Result<(StatusCode, HeaderMap, Json<BotResponse>)> {
     super::add_rate_limit_headers(&mut headers);
 
     let bot_model = bot::Entity::find_by_id(bot_id)
-        .one(db.as_ref())
+        .one(state.db.as_ref())
         .await?
         .ok_or_else(|| AppError::Service("Bot not found".to_string()))?;
 
@@ -132,7 +132,7 @@ pub async fn get_bot(
 }
 
 pub async fn update_bot(
-    State(db): State<Arc<DatabaseConnection>>,
+    State(state): State<AppState>,
     auth_session: AuthSession,
     mut headers: HeaderMap,
     Path(bot_id): Path<Uuid>,
@@ -145,7 +145,7 @@ pub async fn update_bot(
         .ok_or_else(|| AppError::Auth("Authentication required".to_string()))?;
 
     let bot_model = bot::Entity::find_by_id(bot_id)
-        .one(db.as_ref())
+        .one(state.db.as_ref())
         .await?
         .ok_or_else(|| AppError::Service("Bot not found".to_string()))?;
 
@@ -162,7 +162,7 @@ pub async fn update_bot(
             .filter(bot::Column::Name.eq(&name))
             .filter(bot::Column::OwnerId.eq(current_user.id))
             .filter(bot::Column::Id.ne(bot_id))
-            .one(db.as_ref())
+            .one(state.db.as_ref())
             .await?;
 
         if existing_bot.is_some() {
@@ -188,14 +188,14 @@ pub async fn update_bot(
         bot_update.live = Set(live);
     }
 
-    let updated_bot = bot_update.update(db.as_ref()).await?;
+    let updated_bot = bot_update.update(state.db.as_ref()).await?;
     let bot_response = BotResponse::from(updated_bot);
 
     Ok((StatusCode::OK, headers, Json(bot_response)))
 }
 
 pub async fn delete_bot(
-    State(db): State<Arc<DatabaseConnection>>,
+    State(state): State<AppState>,
     auth_session: AuthSession,
     mut headers: HeaderMap,
     Path(bot_id): Path<Uuid>,
@@ -207,7 +207,7 @@ pub async fn delete_bot(
         .ok_or_else(|| AppError::Auth("Authentication required".to_string()))?;
 
     let bot_model = bot::Entity::find_by_id(bot_id)
-        .one(db.as_ref())
+        .one(state.db.as_ref())
         .await?
         .ok_or_else(|| AppError::Service("Bot not found".to_string()))?;
 
@@ -216,7 +216,7 @@ pub async fn delete_bot(
         return Err(AppError::Forbidden("Access denied".to_string()));
     }
 
-    bot::Entity::delete_by_id(bot_id).exec(db.as_ref()).await?;
+    bot::Entity::delete_by_id(bot_id).exec(state.db.as_ref()).await?;
 
     Ok((
         StatusCode::OK,
@@ -226,7 +226,7 @@ pub async fn delete_bot(
 }
 
 pub async fn get_user_bots(
-    State(db): State<Arc<DatabaseConnection>>,
+    State(state): State<AppState>,
     auth_session: AuthSession,
     mut headers: HeaderMap,
     Path(user_id): Path<Uuid>,
@@ -244,7 +244,7 @@ pub async fn get_user_bots(
 
     let bots = bot::Entity::find()
         .filter(bot::Column::OwnerId.eq(user_id))
-        .all(db.as_ref())
+        .all(state.db.as_ref())
         .await?;
 
     let bot_responses: Vec<BotResponse> = bots.into_iter().map(BotResponse::from).collect();

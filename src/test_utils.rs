@@ -18,11 +18,19 @@ pub mod test_utils {
         api::{auth as auth_handlers, bots, lobbies, matches, matchmaking, rooms, users},
         auth::Backend,
         health,
+        service::AppState,
+        queue::TestQueueProvider,
     };
     use entity::{bot, user};
 
     /// Create a test app with mock database and in-memory sessions
     pub fn create_test_app(db: Arc<DatabaseConnection>) -> Router {
+        // Create test state with mock queue provider
+        let state = AppState {
+            db: db.clone(),
+            queue: Arc::new(TestQueueProvider::new()),
+        };
+
         // Use memory store for sessions in tests
         let session_store = MemoryStore::default();
         let session_layer = SessionManagerLayer::new(session_store)
@@ -100,7 +108,7 @@ pub mod test_utils {
                 axum::routing::get(matches::get_user_stats),
             )
             .route("/stats/bot/:id", axum::routing::get(matches::get_bot_stats))
-            .with_state(db.clone());
+            .with_state(state.clone());
 
         // Create public routes
         let public_routes = Router::new()
@@ -109,7 +117,7 @@ pub mod test_utils {
             .route("/auth/login", axum::routing::post(auth_handlers::login))
             .route("/users", axum::routing::post(users::create_user)) // Registration is public
             .route("/lobbies", axum::routing::get(lobbies::get_lobbies)) // Public lobby list
-            .with_state(db);
+            .with_state(state);
 
         Router::new()
             .nest("/api/v1", api_routes)

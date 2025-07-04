@@ -3,20 +3,19 @@ use axum::{
     http::{HeaderMap, StatusCode},
     response::Json,
 };
-use chrono::Utc;
 use sea_orm::{
-    ActiveModelTrait, ColumnTrait, DatabaseConnection, EntityTrait, PaginatorTrait, QueryFilter,
-    QueryOrder, QuerySelect, Set,
+    ColumnTrait, EntityTrait, PaginatorTrait, QueryFilter,
+    QueryOrder, QuerySelect,
 };
 use serde::{Deserialize, Serialize};
-use std::sync::Arc;
 use uuid::Uuid;
 
 use crate::{
     auth::AuthSession,
     error::{AppError, Result},
+    service::AppState,
 };
-use entity::{bot, game_history, lobby_pool, r#match, user};
+use entity::{bot, r#match, user};
 
 #[derive(Debug, Serialize)]
 pub struct MatchResponse {
@@ -139,7 +138,7 @@ pub struct BotStatsResponse {
 
 /// Get match history for a user
 pub async fn get_user_match_history(
-    State(db): State<Arc<DatabaseConnection>>,
+    State(state): State<AppState>,
     auth_session: AuthSession,
     mut headers: HeaderMap,
     Path(user_id): Path<Uuid>,
@@ -176,13 +175,13 @@ pub async fn get_user_match_history(
     }
 
     // Get total count
-    let total_count = match_query.clone().count(db.as_ref()).await?;
+    let total_count = match_query.clone().count(state.db.as_ref()).await?;
 
     // Get paginated results
     let matches = match_query
         .limit(limit)
         .offset(offset)
-        .all(db.as_ref())
+        .all(state.db.as_ref())
         .await?;
 
     let match_responses: Vec<MatchResponse> =
@@ -200,7 +199,7 @@ pub async fn get_user_match_history(
 
 /// Get match history for a bot
 pub async fn get_bot_match_history(
-    State(db): State<Arc<DatabaseConnection>>,
+    State(state): State<AppState>,
     auth_session: AuthSession,
     mut headers: HeaderMap,
     Path(bot_id): Path<Uuid>,
@@ -214,7 +213,7 @@ pub async fn get_bot_match_history(
 
     // Verify bot exists and user has access to view its history
     let bot = bot::Entity::find_by_id(bot_id)
-        .one(db.as_ref())
+        .one(state.db.as_ref())
         .await?
         .ok_or_else(|| AppError::Service("Bot not found".to_string()))?;
 
@@ -242,13 +241,13 @@ pub async fn get_bot_match_history(
     }
 
     // Get total count
-    let total_count = match_query.clone().count(db.as_ref()).await?;
+    let total_count = match_query.clone().count(state.db.as_ref()).await?;
 
     // Get paginated results
     let matches = match_query
         .limit(limit)
         .offset(offset)
-        .all(db.as_ref())
+        .all(state.db.as_ref())
         .await?;
 
     let match_responses: Vec<MatchResponse> =
@@ -266,7 +265,7 @@ pub async fn get_bot_match_history(
 
 /// Get a specific match details
 pub async fn get_match(
-    State(db): State<Arc<DatabaseConnection>>,
+    State(state): State<AppState>,
     auth_session: AuthSession,
     mut headers: HeaderMap,
     Path(match_id): Path<Uuid>,
@@ -278,7 +277,7 @@ pub async fn get_match(
         .ok_or_else(|| AppError::Auth("Authentication required".to_string()))?;
 
     let match_model = r#match::Entity::find_by_id(match_id)
-        .one(db.as_ref())
+        .one(state.db.as_ref())
         .await?
         .ok_or_else(|| AppError::Service("Match not found".to_string()))?;
 
@@ -293,7 +292,7 @@ pub async fn get_match(
     if !user_participated && current_user.role != "Admin" {
         let user_bots = bot::Entity::find()
             .filter(bot::Column::OwnerId.eq(current_user.id))
-            .all(db.as_ref())
+            .all(state.db.as_ref())
             .await?;
 
         let user_bot_ids: Vec<Uuid> = user_bots.into_iter().map(|bot| bot.id).collect();
@@ -316,7 +315,7 @@ pub async fn get_match(
 
 /// Get user statistics
 pub async fn get_user_stats(
-    State(db): State<Arc<DatabaseConnection>>,
+    State(state): State<AppState>,
     auth_session: AuthSession,
     mut headers: HeaderMap,
     Path(user_id): Path<Uuid>,
@@ -334,7 +333,7 @@ pub async fn get_user_stats(
 
     // Verify user exists
     let target_user = user::Entity::find_by_id(user_id)
-        .one(db.as_ref())
+        .one(state.db.as_ref())
         .await?
         .ok_or_else(|| AppError::Service("User not found".to_string()))?;
 
@@ -348,7 +347,7 @@ pub async fn get_user_stats(
                 .or(r#match::Column::Participant4Id.eq(user_id)),
         )
         .filter(r#match::Column::CompletedAt.is_not_null())
-        .all(db.as_ref())
+        .all(state.db.as_ref())
         .await?;
 
     // Calculate statistics
@@ -405,7 +404,7 @@ pub async fn get_user_stats(
 
 /// Get bot statistics
 pub async fn get_bot_stats(
-    State(db): State<Arc<DatabaseConnection>>,
+    State(state): State<AppState>,
     auth_session: AuthSession,
     mut headers: HeaderMap,
     Path(bot_id): Path<Uuid>,
@@ -418,7 +417,7 @@ pub async fn get_bot_stats(
 
     // Verify bot exists and user has access
     let bot = bot::Entity::find_by_id(bot_id)
-        .one(db.as_ref())
+        .one(state.db.as_ref())
         .await?
         .ok_or_else(|| AppError::Service("Bot not found".to_string()))?;
 
@@ -436,7 +435,7 @@ pub async fn get_bot_stats(
                 .or(r#match::Column::Participant4Id.eq(bot_id)),
         )
         .filter(r#match::Column::CompletedAt.is_not_null())
-        .all(db.as_ref())
+        .all(state.db.as_ref())
         .await?;
 
     // Calculate statistics (similar to user stats)

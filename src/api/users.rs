@@ -4,14 +4,14 @@ use axum::{
     response::Json,
 };
 use chrono::Utc;
-use sea_orm::{ActiveModelTrait, ColumnTrait, DatabaseConnection, EntityTrait, QueryFilter, Set};
+use sea_orm::{ActiveModelTrait, ColumnTrait, EntityTrait, QueryFilter, Set};
 use serde::{Deserialize, Serialize};
-use std::sync::Arc;
 use uuid::Uuid;
 
 use crate::{
     auth::{AuthSession, Backend},
     error::{AppError, Result},
+    service::AppState,
 };
 use entity::user;
 
@@ -67,7 +67,7 @@ pub struct UpdateUserRequest {
 }
 
 pub async fn create_user(
-    State(db): State<Arc<DatabaseConnection>>,
+    State(state): State<AppState>,
     mut headers: HeaderMap,
     Json(request): Json<CreateUserRequest>,
 ) -> Result<(StatusCode, HeaderMap, Json<UserResponse>)> {
@@ -76,7 +76,7 @@ pub async fn create_user(
     let existing_user = user::Entity::find()
         .filter(user::Column::Username.eq(&request.username))
         .filter(user::Column::DeletedAt.is_null())
-        .one(db.as_ref())
+        .one(state.db.as_ref())
         .await?;
 
     if existing_user.is_some() {
@@ -103,14 +103,14 @@ pub async fn create_user(
         deleted_at: Set(None),
     };
 
-    let user_model = new_user.insert(db.as_ref()).await?;
+    let user_model = new_user.insert(state.db.as_ref()).await?;
     let user_response = UserResponse::from(user_model);
 
     Ok((StatusCode::CREATED, headers, Json(user_response)))
 }
 
 pub async fn get_user(
-    State(db): State<Arc<DatabaseConnection>>,
+    State(state): State<AppState>,
     auth_session: AuthSession,
     mut headers: HeaderMap,
     Path(user_id): Path<Uuid>,
@@ -128,7 +128,7 @@ pub async fn get_user(
 
     let user_model = user::Entity::find_by_id(user_id)
         .filter(user::Column::DeletedAt.is_null())
-        .one(db.as_ref())
+        .one(state.db.as_ref())
         .await?
         .ok_or_else(|| AppError::Service("User not found".to_string()))?;
 
@@ -137,7 +137,7 @@ pub async fn get_user(
 }
 
 pub async fn update_user(
-    State(db): State<Arc<DatabaseConnection>>,
+    State(state): State<AppState>,
     auth_session: AuthSession,
     mut headers: HeaderMap,
     Path(user_id): Path<Uuid>,
@@ -156,7 +156,7 @@ pub async fn update_user(
 
     let user_model = user::Entity::find_by_id(user_id)
         .filter(user::Column::DeletedAt.is_null())
-        .one(db.as_ref())
+        .one(state.db.as_ref())
         .await?
         .ok_or_else(|| AppError::Service("User not found".to_string()))?;
 
@@ -175,14 +175,14 @@ pub async fn update_user(
         user_update.email = Set(Some(email));
     }
 
-    let updated_user = user_update.update(db.as_ref()).await?;
+    let updated_user = user_update.update(state.db.as_ref()).await?;
     let user_response = UserResponse::from(updated_user);
 
     Ok((StatusCode::OK, headers, Json(user_response)))
 }
 
 pub async fn delete_user(
-    State(db): State<Arc<DatabaseConnection>>,
+    State(state): State<AppState>,
     auth_session: AuthSession,
     mut headers: HeaderMap,
     Path(user_id): Path<Uuid>,
@@ -200,7 +200,7 @@ pub async fn delete_user(
 
     let user_model = user::Entity::find_by_id(user_id)
         .filter(user::Column::DeletedAt.is_null())
-        .one(db.as_ref())
+        .one(state.db.as_ref())
         .await?
         .ok_or_else(|| AppError::Service("User not found".to_string()))?;
 
@@ -216,7 +216,7 @@ pub async fn delete_user(
         .collect::<String>();
     user_update.username = Set(format!("Anonymous_User_{}", anonymous_id));
 
-    user_update.update(db.as_ref()).await?;
+    user_update.update(state.db.as_ref()).await?;
 
     Ok((
         StatusCode::OK,

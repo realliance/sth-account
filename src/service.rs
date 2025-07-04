@@ -16,12 +16,46 @@ use crate::{
     error::Result,
     health,
     session_store::SeaOrmSessionStore,
+    queue::{QueueProvider, RealQueueProvider, TestQueueProvider},
 };
-use std::sync::Arc;
+use sea_orm::DatabaseConnection;
+use std::{env, sync::Arc};
+
+/// Shared application state
+#[derive(Clone)]
+pub struct AppState {
+    pub db: Arc<DatabaseConnection>,
+    pub queue: Arc<dyn QueueProvider>,
+}
 
 pub async fn run_service() -> Result<()> {
     let config = Config::from_env()?;
     let db = Arc::new(database::establish_connection(&config).await?);
+
+    // Initialize queue provider
+    let queue_provider: Arc<dyn QueueProvider> = if env::var("ENVIRONMENT").unwrap_or_default() == "test" {
+        Arc::new(TestQueueProvider::new())
+    } else {
+        let real_provider = RealQueueProvider::new();
+        // Try to connect to RabbitMQ if configured
+        if let (Ok(host), Ok(port), Ok(username), Ok(password)) = (
+            env::var("RABBITMQ_HOST"),
+            env::var("RABBITMQ_PORT").and_then(|p| p.parse::<u16>().map_err(|_| env::VarError::NotPresent)),
+            env::var("RABBITMQ_USERNAME"),
+            env::var("RABBITMQ_PASSWORD"),
+        ) {
+            if let Err(e) = real_provider.connect(&host, port, &username, &password).await {
+                tracing::warn!("Failed to connect to RabbitMQ: {}", e);
+            }
+        }
+        Arc::new(real_provider)
+    };
+
+    // Application state
+    let state = AppState {
+        db: db.clone(),
+        queue: queue_provider,
+    };
 
     // Session store using our custom SeaORM implementation
     let session_store = SeaOrmSessionStore::new(db.clone());
@@ -80,7 +114,7 @@ pub async fn run_service() -> Result<()> {
         .route("/matches/:id", get(matches::get_match))
         .route("/stats/user/:id", get(matches::get_user_stats))
         .route("/stats/bot/:id", get(matches::get_bot_stats))
-        .with_state(db.clone());
+        .with_state(state.clone());
 
     // Public routes (no auth required)
     let public_routes = Router::new()
@@ -89,7 +123,7 @@ pub async fn run_service() -> Result<()> {
         .route("/auth/login", post(auth_handlers::login))
         .route("/users", post(users::create_user)) // Registration is public
         .route("/lobbies", get(lobbies::get_lobbies)) // Public lobby list
-        .with_state(db);
+        .with_state(state);
 
     let app = Router::new()
         .nest("/api/v1", api_routes)

@@ -3,14 +3,14 @@ use axum::{
     http::{HeaderMap, StatusCode},
     response::Json,
 };
-use sea_orm::{ActiveModelTrait, ColumnTrait, DatabaseConnection, EntityTrait, QueryFilter, Set};
+use sea_orm::{ActiveModelTrait, ColumnTrait, EntityTrait, QueryFilter, Set};
 use serde::{Deserialize, Serialize};
-use std::sync::Arc;
 use uuid::Uuid;
 
 use crate::{
     auth::AuthSession,
     error::{AppError, Result},
+    service::AppState,
 };
 use entity::lobby_pool;
 
@@ -76,7 +76,7 @@ impl From<String> for LobbyPreset {
 
 /// Create a new lobby (Admin only)
 pub async fn create_lobby(
-    State(db): State<Arc<DatabaseConnection>>,
+    State(state): State<AppState>,
     auth_session: AuthSession,
     mut headers: HeaderMap,
     Json(request): Json<CreateLobbyRequest>,
@@ -97,7 +97,7 @@ pub async fn create_lobby(
     // Check if lobby name is unique
     let existing_lobby = lobby_pool::Entity::find()
         .filter(lobby_pool::Column::Name.eq(&request.name))
-        .one(db.as_ref())
+        .one(state.db.as_ref())
         .await?;
 
     if existing_lobby.is_some() {
@@ -112,7 +112,7 @@ pub async fn create_lobby(
         active: Set(true),
     };
 
-    let lobby_model = new_lobby.insert(db.as_ref()).await?;
+    let lobby_model = new_lobby.insert(state.db.as_ref()).await?;
     let lobby_response = LobbyResponse::from(lobby_model);
 
     Ok((StatusCode::CREATED, headers, Json(lobby_response)))
@@ -120,7 +120,7 @@ pub async fn create_lobby(
 
 /// Get all lobbies
 pub async fn get_lobbies(
-    State(db): State<Arc<DatabaseConnection>>,
+    State(state): State<AppState>,
     mut headers: HeaderMap,
 ) -> Result<(StatusCode, HeaderMap, Json<Vec<LobbyResponse>>)> {
     super::add_rate_limit_headers(&mut headers);
@@ -128,7 +128,7 @@ pub async fn get_lobbies(
     // Return only active lobbies for public API
     let lobbies = lobby_pool::Entity::find()
         .filter(lobby_pool::Column::Active.eq(true))
-        .all(db.as_ref())
+        .all(state.db.as_ref())
         .await?;
 
     let lobby_responses: Vec<LobbyResponse> =
@@ -139,7 +139,7 @@ pub async fn get_lobbies(
 
 /// Get all lobbies (Admin view - includes inactive)
 pub async fn get_all_lobbies(
-    State(db): State<Arc<DatabaseConnection>>,
+    State(state): State<AppState>,
     auth_session: AuthSession,
     mut headers: HeaderMap,
 ) -> Result<(StatusCode, HeaderMap, Json<Vec<LobbyResponse>>)> {
@@ -156,7 +156,7 @@ pub async fn get_all_lobbies(
         ));
     }
 
-    let lobbies = lobby_pool::Entity::find().all(db.as_ref()).await?;
+    let lobbies = lobby_pool::Entity::find().all(state.db.as_ref()).await?;
 
     let lobby_responses: Vec<LobbyResponse> =
         lobbies.into_iter().map(LobbyResponse::from).collect();
@@ -166,14 +166,14 @@ pub async fn get_all_lobbies(
 
 /// Get a specific lobby
 pub async fn get_lobby(
-    State(db): State<Arc<DatabaseConnection>>,
+    State(state): State<AppState>,
     mut headers: HeaderMap,
     Path(lobby_id): Path<Uuid>,
 ) -> Result<(StatusCode, HeaderMap, Json<LobbyResponse>)> {
     super::add_rate_limit_headers(&mut headers);
 
     let lobby_model = lobby_pool::Entity::find_by_id(lobby_id)
-        .one(db.as_ref())
+        .one(state.db.as_ref())
         .await?
         .ok_or_else(|| AppError::Service("Lobby not found".to_string()))?;
 
@@ -183,7 +183,7 @@ pub async fn get_lobby(
 
 /// Update a lobby (Admin only)
 pub async fn update_lobby(
-    State(db): State<Arc<DatabaseConnection>>,
+    State(state): State<AppState>,
     auth_session: AuthSession,
     mut headers: HeaderMap,
     Path(lobby_id): Path<Uuid>,
@@ -203,7 +203,7 @@ pub async fn update_lobby(
     }
 
     let lobby_model = lobby_pool::Entity::find_by_id(lobby_id)
-        .one(db.as_ref())
+        .one(state.db.as_ref())
         .await?
         .ok_or_else(|| AppError::Service("Lobby not found".to_string()))?;
 
@@ -214,7 +214,7 @@ pub async fn update_lobby(
         let existing_lobby = lobby_pool::Entity::find()
             .filter(lobby_pool::Column::Name.eq(&name))
             .filter(lobby_pool::Column::Id.ne(lobby_id))
-            .one(db.as_ref())
+            .one(state.db.as_ref())
             .await?;
 
         if existing_lobby.is_some() {
@@ -232,7 +232,7 @@ pub async fn update_lobby(
         lobby_update.active = Set(active);
     }
 
-    let updated_lobby = lobby_update.update(db.as_ref()).await?;
+    let updated_lobby = lobby_update.update(state.db.as_ref()).await?;
     let lobby_response = LobbyResponse::from(updated_lobby);
 
     Ok((StatusCode::OK, headers, Json(lobby_response)))
@@ -240,7 +240,7 @@ pub async fn update_lobby(
 
 /// Delete a lobby (Admin only) - Soft delete by setting active = false
 pub async fn delete_lobby(
-    State(db): State<Arc<DatabaseConnection>>,
+    State(state): State<AppState>,
     auth_session: AuthSession,
     mut headers: HeaderMap,
     Path(lobby_id): Path<Uuid>,
@@ -259,14 +259,14 @@ pub async fn delete_lobby(
     }
 
     let lobby_model = lobby_pool::Entity::find_by_id(lobby_id)
-        .one(db.as_ref())
+        .one(state.db.as_ref())
         .await?
         .ok_or_else(|| AppError::Service("Lobby not found".to_string()))?;
 
     // Soft delete by setting active = false
     let mut lobby_update: lobby_pool::ActiveModel = lobby_model.into();
     lobby_update.active = Set(false);
-    lobby_update.update(db.as_ref()).await?;
+    lobby_update.update(state.db.as_ref()).await?;
 
     Ok((
         StatusCode::OK,

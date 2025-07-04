@@ -16,6 +16,7 @@ use uuid::Uuid;
 use crate::{
     auth::AuthSession,
     error::{AppError, Result},
+    service::AppState,
 };
 
 use entity::{private_room, room_invitation, room_participants, user};
@@ -74,7 +75,7 @@ pub struct InviteToRoomRequest {
 
 /// Create a private room
 pub async fn create_room(
-    State(db): State<Arc<DatabaseConnection>>,
+    State(state): State<AppState>,
     auth_session: AuthSession,
     mut headers: HeaderMap,
     Json(request): Json<CreateRoomRequest>,
@@ -106,7 +107,7 @@ pub async fn create_room(
     // Check if room code already exists (very unlikely but possible)
     if private_room::Entity::find()
         .filter(private_room::Column::RoomCode.eq(&room_code))
-        .one(db.as_ref())
+        .one(state.db.as_ref())
         .await
         .map_err(AppError::Database)?
         .is_some()
@@ -134,7 +135,7 @@ pub async fn create_room(
     };
 
     let room = new_room
-        .insert(db.as_ref())
+        .insert(state.db.as_ref())
         .await
         .map_err(AppError::Database)?;
 
@@ -150,7 +151,7 @@ pub async fn create_room(
     };
 
     host_participant
-        .insert(db.as_ref())
+        .insert(state.db.as_ref())
         .await
         .map_err(AppError::Database)?;
 
@@ -170,7 +171,7 @@ pub fn generate_room_code() -> String {
 
 /// Join a private room by room code
 pub async fn join_room(
-    State(db): State<Arc<DatabaseConnection>>,
+    State(state): State<AppState>,
     auth_session: AuthSession,
     mut headers: HeaderMap,
     Json(request): Json<JoinRoomRequest>,
@@ -184,7 +185,7 @@ pub async fn join_room(
     // Find the room by code
     let room = private_room::Entity::find()
         .filter(private_room::Column::RoomCode.eq(&request.room_code))
-        .one(db.as_ref())
+        .one(state.db.as_ref())
         .await
         .map_err(AppError::Database)?
         .ok_or_else(|| AppError::NotFound("Room not found".to_string()))?;
@@ -208,7 +209,7 @@ pub async fn join_room(
         .filter(room_participants::Column::RoomId.eq(room.id))
         .filter(room_participants::Column::ParticipantId.eq(current_user.id))
         .filter(room_participants::Column::Status.eq("Joined"))
-        .one(db.as_ref())
+        .one(state.db.as_ref())
         .await
         .map_err(AppError::Database)?
         .is_some()
@@ -222,7 +223,7 @@ pub async fn join_room(
     let current_participants = room_participants::Entity::find()
         .filter(room_participants::Column::RoomId.eq(room.id))
         .filter(room_participants::Column::Status.eq("Joined"))
-        .count(db.as_ref())
+        .count(state.db.as_ref())
         .await
         .map_err(AppError::Database)?;
 
@@ -242,7 +243,7 @@ pub async fn join_room(
     };
 
     new_participant
-        .insert(db.as_ref())
+        .insert(state.db.as_ref())
         .await
         .map_err(AppError::Database)?;
 
@@ -253,7 +254,7 @@ pub async fn join_room(
 
 /// Leave a private room
 pub async fn leave_room(
-    State(db): State<Arc<DatabaseConnection>>,
+    State(state): State<AppState>,
     auth_session: AuthSession,
     mut headers: HeaderMap,
     Path(room_id): Path<Uuid>,
@@ -269,7 +270,7 @@ pub async fn leave_room(
         .filter(room_participants::Column::RoomId.eq(room_id))
         .filter(room_participants::Column::ParticipantId.eq(current_user.id))
         .filter(room_participants::Column::Status.eq("Joined"))
-        .one(db.as_ref())
+        .one(state.db.as_ref())
         .await
         .map_err(AppError::Database)?
         .ok_or_else(|| AppError::NotFound("You are not in this room".to_string()))?;
@@ -280,7 +281,7 @@ pub async fn leave_room(
     participant_update.left_at = Set(Some(Utc::now().into()));
 
     participant_update
-        .update(db.as_ref())
+        .update(state.db.as_ref())
         .await
         .map_err(AppError::Database)?;
 
@@ -288,21 +289,21 @@ pub async fn leave_room(
     let remaining_participants = room_participants::Entity::find()
         .filter(room_participants::Column::RoomId.eq(room_id))
         .filter(room_participants::Column::Status.eq("Joined"))
-        .count(db.as_ref())
+        .count(state.db.as_ref())
         .await
         .map_err(AppError::Database)?;
 
     if remaining_participants == 0 {
         // Update room status to "Empty"
         if let Some(room) = private_room::Entity::find_by_id(room_id)
-            .one(db.as_ref())
+            .one(state.db.as_ref())
             .await
             .map_err(AppError::Database)?
         {
             let mut room_update: private_room::ActiveModel = room.into();
             room_update.status = Set("Empty".to_string());
             room_update
-                .update(db.as_ref())
+                .update(state.db.as_ref())
                 .await
                 .map_err(AppError::Database)?;
         }
@@ -317,7 +318,7 @@ pub async fn leave_room(
 
 /// Get user's private rooms
 pub async fn get_user_rooms(
-    State(db): State<Arc<DatabaseConnection>>,
+    State(state): State<AppState>,
     auth_session: AuthSession,
     mut headers: HeaderMap,
 ) -> Result<(StatusCode, HeaderMap, Json<Vec<PrivateRoomResponse>>)> {
@@ -332,7 +333,7 @@ pub async fn get_user_rooms(
         .filter(room_participants::Column::ParticipantId.eq(current_user.id))
         .filter(room_participants::Column::Status.eq("Joined"))
         .find_also_related(private_room::Entity)
-        .all(db.as_ref())
+        .all(state.db.as_ref())
         .await
         .map_err(AppError::Database)?;
 
@@ -343,7 +344,7 @@ pub async fn get_user_rooms(
             let participant_count = room_participants::Entity::find()
                 .filter(room_participants::Column::RoomId.eq(room.id))
                 .filter(room_participants::Column::Status.eq("Joined"))
-                .count(db.as_ref())
+                .count(state.db.as_ref())
                 .await
                 .map_err(AppError::Database)?;
 
@@ -359,7 +360,7 @@ pub async fn get_user_rooms(
 
 /// Invite a user to a private room
 pub async fn invite_to_room(
-    State(db): State<Arc<DatabaseConnection>>,
+    State(state): State<AppState>,
     auth_session: AuthSession,
     mut headers: HeaderMap,
     Path(room_id): Path<Uuid>,
@@ -373,7 +374,7 @@ pub async fn invite_to_room(
 
     // Find the room and verify user is host or participant
     let room = private_room::Entity::find_by_id(room_id)
-        .one(db.as_ref())
+        .one(state.db.as_ref())
         .await
         .map_err(AppError::Database)?
         .ok_or_else(|| AppError::NotFound("Room not found".to_string()))?;
@@ -384,7 +385,7 @@ pub async fn invite_to_room(
         .filter(room_participants::Column::RoomId.eq(room_id))
         .filter(room_participants::Column::ParticipantId.eq(current_user.id))
         .filter(room_participants::Column::Status.eq("Joined"))
-        .one(db.as_ref())
+        .one(state.db.as_ref())
         .await
         .map_err(AppError::Database)?
         .is_some();
@@ -397,7 +398,7 @@ pub async fn invite_to_room(
 
     // Check if invitee exists
     if !user::Entity::find_by_id(request.invitee_id)
-        .one(db.as_ref())
+        .one(state.db.as_ref())
         .await
         .map_err(AppError::Database)?
         .is_some()
@@ -410,7 +411,7 @@ pub async fn invite_to_room(
         .filter(room_participants::Column::RoomId.eq(room_id))
         .filter(room_participants::Column::ParticipantId.eq(request.invitee_id))
         .filter(room_participants::Column::Status.eq("Joined"))
-        .one(db.as_ref())
+        .one(state.db.as_ref())
         .await
         .map_err(AppError::Database)?
         .is_some()
@@ -425,7 +426,7 @@ pub async fn invite_to_room(
         .filter(room_invitation::Column::RoomId.eq(room_id))
         .filter(room_invitation::Column::InviteeId.eq(request.invitee_id))
         .filter(room_invitation::Column::Status.eq("Pending"))
-        .one(db.as_ref())
+        .one(state.db.as_ref())
         .await
         .map_err(AppError::Database)?
         .is_some()
@@ -448,7 +449,7 @@ pub async fn invite_to_room(
     };
 
     invitation
-        .insert(db.as_ref())
+        .insert(state.db.as_ref())
         .await
         .map_err(AppError::Database)?;
 
@@ -461,7 +462,7 @@ pub async fn invite_to_room(
 
 /// Get room details
 pub async fn get_room(
-    State(db): State<Arc<DatabaseConnection>>,
+    State(state): State<AppState>,
     auth_session: AuthSession,
     mut headers: HeaderMap,
     Path(room_id): Path<Uuid>,
@@ -474,7 +475,7 @@ pub async fn get_room(
 
     // Find the room
     let room = private_room::Entity::find_by_id(room_id)
-        .one(db.as_ref())
+        .one(state.db.as_ref())
         .await
         .map_err(AppError::Database)?
         .ok_or_else(|| AppError::NotFound("Room not found".to_string()))?;
@@ -485,7 +486,7 @@ pub async fn get_room(
         .filter(room_participants::Column::RoomId.eq(room_id))
         .filter(room_participants::Column::ParticipantId.eq(current_user.id))
         .filter(room_participants::Column::Status.eq("Joined"))
-        .one(db.as_ref())
+        .one(state.db.as_ref())
         .await
         .map_err(AppError::Database)?
         .is_some();
@@ -500,7 +501,7 @@ pub async fn get_room(
     let participant_count = room_participants::Entity::find()
         .filter(room_participants::Column::RoomId.eq(room_id))
         .filter(room_participants::Column::Status.eq("Joined"))
-        .count(db.as_ref())
+        .count(state.db.as_ref())
         .await
         .map_err(AppError::Database)? as usize;
 
