@@ -23,7 +23,7 @@ impl MigrationTrait for Migration {
                             .name("fk_queue_lobby")
                             .from(Queue::Table, Queue::LobbyId)
                             .to(LobbyPool::Table, LobbyPool::Id)
-                            .on_delete(ForeignKeyAction::Cascade)
+                            .on_delete(ForeignKeyAction::Cascade),
                     )
                     .to_owned(),
             )
@@ -39,7 +39,7 @@ impl MigrationTrait for Migration {
                     .to_owned(),
             )
             .await?;
-            
+
         manager
             .create_index(
                 Index::create()
@@ -49,7 +49,7 @@ impl MigrationTrait for Migration {
                     .to_owned(),
             )
             .await?;
-            
+
         manager
             .create_index(
                 Index::create()
@@ -59,7 +59,6 @@ impl MigrationTrait for Migration {
                     .to_owned(),
             )
             .await
-
     }
 
     async fn down(&self, manager: &SchemaManager) -> Result<(), DbErr> {

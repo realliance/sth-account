@@ -41,14 +41,14 @@ impl MigrationTrait for Migration {
                             .name("fk_match_lobby")
                             .from(Match::Table, Match::LobbyId)
                             .to(LobbyPool::Table, LobbyPool::Id)
-                            .on_delete(ForeignKeyAction::Restrict)
+                            .on_delete(ForeignKeyAction::Restrict),
                     )
                     .foreign_key(
                         ForeignKey::create()
                             .name("fk_match_game_history")
                             .from(Match::Table, Match::GameHistoryId)
                             .to(GameHistory::Table, GameHistory::Id)
-                            .on_delete(ForeignKeyAction::Restrict)
+                            .on_delete(ForeignKeyAction::Restrict),
                     )
                     .to_owned(),
             )
@@ -64,7 +64,7 @@ impl MigrationTrait for Migration {
                     .to_owned(),
             )
             .await?;
-            
+
         manager
             .create_index(
                 Index::create()
@@ -74,7 +74,7 @@ impl MigrationTrait for Migration {
                     .to_owned(),
             )
             .await?;
-            
+
         // Indexes for participants
         manager
             .create_index(
@@ -85,7 +85,7 @@ impl MigrationTrait for Migration {
                     .to_owned(),
             )
             .await?;
-            
+
         manager
             .create_index(
                 Index::create()
@@ -95,7 +95,7 @@ impl MigrationTrait for Migration {
                     .to_owned(),
             )
             .await?;
-            
+
         manager
             .create_index(
                 Index::create()
@@ -105,7 +105,7 @@ impl MigrationTrait for Migration {
                     .to_owned(),
             )
             .await?;
-            
+
         manager
             .create_index(
                 Index::create()
@@ -115,7 +115,6 @@ impl MigrationTrait for Migration {
                     .to_owned(),
             )
             .await
-
     }
 
     async fn down(&self, manager: &SchemaManager) -> Result<(), DbErr> {

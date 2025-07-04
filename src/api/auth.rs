@@ -1,7 +1,7 @@
 use axum::{
+    Form,
     http::{HeaderMap, StatusCode},
     response::Json,
-    Form,
 };
 use serde::{Deserialize, Serialize};
 
@@ -50,11 +50,19 @@ pub async fn login(
                 }),
             ));
         }
-        Err(e) => return Err(crate::error::AppError::Auth(format!("Authentication failed: {}", e))),
+        Err(e) => {
+            return Err(crate::error::AppError::Auth(format!(
+                "Authentication failed: {}",
+                e
+            )));
+        }
     };
 
     if let Err(e) = auth_session.login(&user).await {
-        return Err(AppError::Service(format!("Failed to create session: {}", e)));
+        return Err(AppError::Service(format!(
+            "Failed to create session: {}",
+            e
+        )));
     }
 
     Ok((
@@ -158,7 +166,7 @@ mod tests {
             .await;
 
         assert_eq!(response.status_code(), StatusCode::CREATED);
-        
+
         let body: serde_json::Value = response.json();
         assert_eq!(body["username"], "testuser"); // From mock_user
         assert_eq!(body["country"], "USA");
@@ -191,16 +199,21 @@ mod tests {
             .await;
 
         assert_eq!(response.status_code(), StatusCode::BAD_REQUEST);
-        
+
         let body: serde_json::Value = response.json();
-        assert!(body["error"].as_str().unwrap().contains("Username already exists"));
+        assert!(
+            body["error"]
+                .as_str()
+                .unwrap()
+                .contains("Username already exists")
+        );
     }
 
     #[tokio::test]
     async fn test_get_user_success() {
         let user_id = Uuid::new_v4();
         let mut mock_user = sample_user(Some(user_id));
-        
+
         // Generate proper password hash
         use crate::auth::Backend;
         let proper_hash = Backend::hash_password("password123").await.unwrap();
@@ -213,7 +226,10 @@ mod tests {
             device_info: None,
             ip_address: "127.0.0.1".to_string(),
             created_at: chrono::Utc::now().into(),
-            expires_at: chrono::Utc::now().checked_add_signed(chrono::Duration::hours(1)).unwrap().into(),
+            expires_at: chrono::Utc::now()
+                .checked_add_signed(chrono::Duration::hours(1))
+                .unwrap()
+                .into(),
             last_active_at: Some(chrono::Utc::now().into()),
             status: "Active".to_string(),
         };
@@ -270,7 +286,7 @@ mod tests {
         // Mock: auth user exists but requested user doesn't
         let db = create_mock_db()
             .append_query_results([
-                vec![auth_user], // For auth session
+                vec![auth_user],           // For auth session
                 Vec::<user::Model>::new(), // Requested user not found
             ])
             .into_connection();
@@ -283,9 +299,14 @@ mod tests {
             .await;
 
         assert_eq!(response.status_code(), StatusCode::UNAUTHORIZED);
-        
+
         let body: serde_json::Value = response.json();
-        assert!(body["error"].as_str().unwrap().contains("Authentication required"));
+        assert!(
+            body["error"]
+                .as_str()
+                .unwrap()
+                .contains("Authentication required")
+        );
     }
 
     #[tokio::test]
@@ -320,9 +341,14 @@ mod tests {
             .await;
 
         assert_eq!(response.status_code(), StatusCode::UNAUTHORIZED);
-        
+
         let body: serde_json::Value = response.json();
-        assert!(body["error"].as_str().unwrap().contains("Authentication required"));
+        assert!(
+            body["error"]
+                .as_str()
+                .unwrap()
+                .contains("Authentication required")
+        );
     }
 
     #[tokio::test]
@@ -346,8 +372,13 @@ mod tests {
             .await;
 
         assert_eq!(response.status_code(), StatusCode::UNAUTHORIZED);
-        
+
         let body: serde_json::Value = response.json();
-        assert!(body["error"].as_str().unwrap().contains("Authentication required"));
+        assert!(
+            body["error"]
+                .as_str()
+                .unwrap()
+                .contains("Authentication required")
+        );
     }
 }

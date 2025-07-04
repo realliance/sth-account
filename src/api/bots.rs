@@ -4,11 +4,9 @@ use axum::{
     response::Json,
 };
 use chrono::Utc;
-use sea_orm::{
-    ActiveModelTrait, ColumnTrait, DatabaseConnection, EntityTrait, QueryFilter, Set,
-};
-use std::sync::Arc;
+use sea_orm::{ActiveModelTrait, ColumnTrait, DatabaseConnection, EntityTrait, QueryFilter, Set};
 use serde::{Deserialize, Serialize};
+use std::sync::Arc;
 use uuid::Uuid;
 
 use crate::{
@@ -89,7 +87,9 @@ pub async fn create_bot(
         .await?;
 
     if existing_bot.is_some() {
-        return Err(AppError::Service("Bot name already exists for this user".to_string()));
+        return Err(AppError::Service(
+            "Bot name already exists for this user".to_string(),
+        ));
     }
 
     let api_key = format!("bot_{}_{}", current_user.id, Uuid::new_v4());
@@ -166,7 +166,9 @@ pub async fn update_bot(
             .await?;
 
         if existing_bot.is_some() {
-            return Err(AppError::Service("Bot name already exists for this user".to_string()));
+            return Err(AppError::Service(
+                "Bot name already exists for this user".to_string(),
+            ));
         }
         bot_update.name = Set(name);
     }
@@ -299,9 +301,14 @@ mod tests {
             .await;
 
         assert_eq!(response.status_code(), StatusCode::UNAUTHORIZED);
-        
+
         let body: serde_json::Value = response.json();
-        assert!(body["error"].as_str().unwrap().contains("Authentication required"));
+        assert!(
+            body["error"]
+                .as_str()
+                .unwrap()
+                .contains("Authentication required")
+        );
     }
 
     #[tokio::test]
@@ -332,9 +339,14 @@ mod tests {
             .await;
 
         assert_eq!(response.status_code(), StatusCode::UNAUTHORIZED);
-        
+
         let body: serde_json::Value = response.json();
-        assert!(body["error"].as_str().unwrap().contains("Authentication required"));
+        assert!(
+            body["error"]
+                .as_str()
+                .unwrap()
+                .contains("Authentication required")
+        );
     }
 
     #[tokio::test]
@@ -357,7 +369,7 @@ mod tests {
             .await;
 
         assert_eq!(response.status_code(), StatusCode::OK);
-        
+
         let body: serde_json::Value = response.json();
         assert_eq!(body["id"], bot_id.to_string());
         assert_eq!(body["name"], "testbot");
@@ -381,7 +393,7 @@ mod tests {
             .await;
 
         assert_eq!(response.status_code(), StatusCode::BAD_REQUEST);
-        
+
         let body: serde_json::Value = response.json();
         assert!(body["error"].as_str().unwrap().contains("Bot not found"));
     }
@@ -422,9 +434,14 @@ mod tests {
             .await;
 
         assert_eq!(response.status_code(), StatusCode::UNAUTHORIZED);
-        
+
         let body: serde_json::Value = response.json();
-        assert!(body["error"].as_str().unwrap().contains("Authentication required"));
+        assert!(
+            body["error"]
+                .as_str()
+                .unwrap()
+                .contains("Authentication required")
+        );
     }
 
     #[tokio::test]
@@ -457,9 +474,14 @@ mod tests {
             .await;
 
         assert_eq!(response.status_code(), StatusCode::UNAUTHORIZED);
-        
+
         let body: serde_json::Value = response.json();
-        assert!(body["error"].as_str().unwrap().contains("Authentication required"));
+        assert!(
+            body["error"]
+                .as_str()
+                .unwrap()
+                .contains("Authentication required")
+        );
     }
 
     #[tokio::test]
@@ -487,9 +509,14 @@ mod tests {
             .await;
 
         assert_eq!(response.status_code(), StatusCode::UNAUTHORIZED);
-        
+
         let body: serde_json::Value = response.json();
-        assert!(body["error"].as_str().unwrap().contains("Authentication required"));
+        assert!(
+            body["error"]
+                .as_str()
+                .unwrap()
+                .contains("Authentication required")
+        );
     }
 
     #[tokio::test]
@@ -517,9 +544,14 @@ mod tests {
             .await;
 
         assert_eq!(response.status_code(), StatusCode::UNAUTHORIZED);
-        
+
         let body: serde_json::Value = response.json();
-        assert!(body["error"].as_str().unwrap().contains("Authentication required"));
+        assert!(
+            body["error"]
+                .as_str()
+                .unwrap()
+                .contains("Authentication required")
+        );
     }
 
     #[tokio::test]
@@ -542,8 +574,13 @@ mod tests {
             .await;
 
         assert_eq!(response.status_code(), StatusCode::UNAUTHORIZED);
-        
+
         let body: serde_json::Value = response.json();
-        assert!(body["error"].as_str().unwrap().contains("Authentication required"));
+        assert!(
+            body["error"]
+                .as_str()
+                .unwrap()
+                .contains("Authentication required")
+        );
     }
 }

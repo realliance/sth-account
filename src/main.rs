@@ -10,6 +10,7 @@ mod database;
 mod error;
 mod health;
 mod jobs;
+mod queue;
 mod service;
 mod session_store;
 #[cfg(test)]
@@ -35,9 +36,13 @@ async fn main() {
                 cli::MigrationCommand::Down => migration::MigrationCommand::Down,
                 cli::MigrationCommand::Status => migration::MigrationCommand::Status,
                 cli::MigrationCommand::Fresh => migration::MigrationCommand::Fresh,
-                cli::MigrationCommand::Generate { name } => migration::MigrationCommand::Generate { name },
+                cli::MigrationCommand::Generate { name } => {
+                    migration::MigrationCommand::Generate { name }
+                }
             };
-            migration::run_migration(migration_cmd).await.map_err(|e| error::AppError::Migration(e.to_string()))
+            migration::run_migration(migration_cmd)
+                .await
+                .map_err(|e| error::AppError::Migration(e.to_string()))
         }
         Commands::Service => {
             info!("Starting service mode");

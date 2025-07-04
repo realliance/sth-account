@@ -4,11 +4,9 @@ use axum::{
     response::Json,
 };
 use chrono::Utc;
-use sea_orm::{
-    ActiveModelTrait, ColumnTrait, DatabaseConnection, EntityTrait, QueryFilter, Set,
-};
-use std::sync::Arc;
+use sea_orm::{ActiveModelTrait, ColumnTrait, DatabaseConnection, EntityTrait, QueryFilter, Set};
 use serde::{Deserialize, Serialize};
+use std::sync::Arc;
 use uuid::Uuid;
 
 use crate::{
@@ -209,9 +207,13 @@ pub async fn delete_user(
     // Soft delete by setting deleted_at timestamp
     let mut user_update: user::ActiveModel = user_model.into();
     user_update.deleted_at = Set(Some(Utc::now().into()));
-    
+
     // Anonymize username for data retention compliance
-    let anonymous_id = Uuid::new_v4().to_string().chars().take(8).collect::<String>();
+    let anonymous_id = Uuid::new_v4()
+        .to_string()
+        .chars()
+        .take(8)
+        .collect::<String>();
     user_update.username = Set(format!("Anonymous_User_{}", anonymous_id));
 
     user_update.update(db.as_ref()).await?;

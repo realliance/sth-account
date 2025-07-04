@@ -1,5 +1,9 @@
 pub mod auth;
 pub mod bots;
+pub mod lobbies;
+pub mod matches;
+pub mod matchmaking;
+pub mod rooms;
 pub mod users;
 
 #[cfg(test)]

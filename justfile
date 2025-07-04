@@ -70,7 +70,7 @@ generate-entities: migrate-up
     #!/usr/bin/env bash
     export DATABASE_URL="postgresql://sth_user:sth_password@localhost:5432/sth_account"
     cd entity && nix develop --command bash -c "sea-orm-cli generate entity -o src --with-serde both --model-extra-derives 'Default'"
-    @echo "Entities generated in entity/src/"
+    echo "Entities generated in entity/src/"
 
 # Build the project
 build:

@@ -1,17 +1,17 @@
 use argon2::{
-    password_hash::{rand_core::OsRng, PasswordHash, PasswordHasher, PasswordVerifier, SaltString},
     Argon2,
-};
-use axum::{
-    http::StatusCode,
-    response::{IntoResponse, Response},
-    Json,
+    password_hash::{PasswordHash, PasswordHasher, PasswordVerifier, SaltString, rand_core::OsRng},
 };
 use async_trait::async_trait;
+use axum::{
+    Json,
+    http::StatusCode,
+    response::{IntoResponse, Response},
+};
 use axum_login::{AuthUser, AuthnBackend, UserId};
 use sea_orm::{ColumnTrait, DatabaseConnection, EntityTrait, QueryFilter};
-use std::sync::Arc;
 use serde::{Deserialize, Serialize};
+use std::sync::Arc;
 use uuid::Uuid;
 
 use crate::error::{AppError, Result};
@@ -60,7 +60,9 @@ impl Backend {
         let parsed_hash = PasswordHash::new(hash)
             .map_err(|e| AppError::Service(format!("Invalid password hash: {}", e)))?;
         let argon2 = Argon2::default();
-        Ok(argon2.verify_password(password.as_bytes(), &parsed_hash).is_ok())
+        Ok(argon2
+            .verify_password(password.as_bytes(), &parsed_hash)
+            .is_ok())
     }
 }
 

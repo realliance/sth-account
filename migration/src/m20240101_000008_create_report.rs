@@ -29,21 +29,21 @@ impl MigrationTrait for Migration {
                             .name("fk_report_author")
                             .from(Report::Table, Report::AuthorId)
                             .to(User::Table, User::Id)
-                            .on_delete(ForeignKeyAction::Restrict)
+                            .on_delete(ForeignKeyAction::Restrict),
                     )
                     .foreign_key(
                         ForeignKey::create()
                             .name("fk_report_match")
                             .from(Report::Table, Report::MatchId)
                             .to(Match::Table, Match::Id)
-                            .on_delete(ForeignKeyAction::SetNull)
+                            .on_delete(ForeignKeyAction::SetNull),
                     )
                     .foreign_key(
                         ForeignKey::create()
                             .name("fk_report_moderator")
                             .from(Report::Table, Report::ModReportAuthor)
                             .to(User::Table, User::Id)
-                            .on_delete(ForeignKeyAction::SetNull)
+                            .on_delete(ForeignKeyAction::SetNull),
                     )
                     .to_owned(),
             )
@@ -59,7 +59,7 @@ impl MigrationTrait for Migration {
                     .to_owned(),
             )
             .await?;
-            
+
         manager
             .create_index(
                 Index::create()
@@ -69,7 +69,7 @@ impl MigrationTrait for Migration {
                     .to_owned(),
             )
             .await?;
-            
+
         manager
             .create_index(
                 Index::create()
@@ -79,7 +79,7 @@ impl MigrationTrait for Migration {
                     .to_owned(),
             )
             .await?;
-            
+
         manager
             .create_index(
                 Index::create()
@@ -89,7 +89,6 @@ impl MigrationTrait for Migration {
                     .to_owned(),
             )
             .await
-
     }
 
     async fn down(&self, manager: &SchemaManager) -> Result<(), DbErr> {

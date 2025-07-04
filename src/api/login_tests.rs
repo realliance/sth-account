@@ -13,7 +13,7 @@ mod tests {
     async fn test_login_success() {
         let user_id = Uuid::new_v4();
         let mut mock_user = sample_user(Some(user_id));
-        
+
         // Generate a proper hash for "password123" - let's first test our hashing
         use crate::auth::Backend;
         let proper_hash = Backend::hash_password("password123").await.unwrap();
@@ -26,7 +26,10 @@ mod tests {
             device_info: None,
             ip_address: "127.0.0.1".to_string(),
             created_at: chrono::Utc::now().into(),
-            expires_at: chrono::Utc::now().checked_add_signed(chrono::Duration::hours(1)).unwrap().into(),
+            expires_at: chrono::Utc::now()
+                .checked_add_signed(chrono::Duration::hours(1))
+                .unwrap()
+                .into(),
             last_active_at: Some(chrono::Utc::now().into()),
             status: "Active".to_string(),
         };
@@ -64,9 +67,13 @@ mod tests {
         // Debug: check what we actually got
         let body: serde_json::Value = response.json();
         if response.status_code() != StatusCode::OK {
-            panic!("Login failed with status {}: {:?}", response.status_code(), body);
+            panic!(
+                "Login failed with status {}: {:?}",
+                response.status_code(),
+                body
+            );
         }
-        
+
         assert_eq!(response.status_code(), StatusCode::OK);
         assert_eq!(body["success"], true);
         assert_eq!(body["user_id"], user_id.to_string());
@@ -95,7 +102,7 @@ mod tests {
             .await;
 
         assert_eq!(response.status_code(), StatusCode::UNAUTHORIZED);
-        
+
         let body: serde_json::Value = response.json();
         assert_eq!(body["success"], false);
         assert_eq!(body["message"], "Invalid credentials");
@@ -126,7 +133,7 @@ mod tests {
             .await;
 
         assert_eq!(response.status_code(), StatusCode::UNAUTHORIZED);
-        
+
         let body: serde_json::Value = response.json();
         assert_eq!(body["success"], false);
         assert_eq!(body["message"], "Invalid credentials");
@@ -138,12 +145,10 @@ mod tests {
         let app = create_test_app(Arc::new(db));
         let server = TestServer::new(app).unwrap();
 
-        let response = server
-            .method(Method::POST, "/auth/logout")
-            .await;
+        let response = server.method(Method::POST, "/auth/logout").await;
 
         assert_eq!(response.status_code(), StatusCode::OK);
-        
+
         let body: serde_json::Value = response.json();
         assert_eq!(body["success"], true);
         assert_eq!(body["message"], "Logout successful");
@@ -163,12 +168,10 @@ mod tests {
         let app = create_test_app(Arc::new(db));
         let server = TestServer::new(app).unwrap();
 
-        let response = server
-            .method(Method::GET, "/auth/me")
-            .await;
+        let response = server.method(Method::GET, "/auth/me").await;
 
         assert_eq!(response.status_code(), StatusCode::OK);
-        
+
         let body: serde_json::Value = response.json();
         if !body.is_null() {
             assert_eq!(body["user_id"], user_id.to_string());
@@ -183,12 +186,10 @@ mod tests {
         let app = create_test_app(Arc::new(db));
         let server = TestServer::new(app).unwrap();
 
-        let response = server
-            .method(Method::GET, "/auth/me")
-            .await;
+        let response = server.method(Method::GET, "/auth/me").await;
 
         assert_eq!(response.status_code(), StatusCode::OK);
-        
+
         let body: serde_json::Value = response.json();
         assert!(body.is_null()); // No authenticated user
     }

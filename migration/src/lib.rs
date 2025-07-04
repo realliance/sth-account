@@ -8,6 +8,9 @@ mod m20240101_000005_create_match;
 mod m20240101_000006_create_queue;
 mod m20240101_000007_create_user_session;
 mod m20240101_000008_create_report;
+mod m20240101_000009_create_private_room;
+mod m20240101_000010_create_room_invitation;
+mod m20240101_000011_create_room_participants;
 
 pub struct Migrator;
 
@@ -23,6 +26,9 @@ impl MigratorTrait for Migrator {
             Box::new(m20240101_000006_create_queue::Migration),
             Box::new(m20240101_000007_create_user_session::Migration),
             Box::new(m20240101_000008_create_report::Migration),
+            Box::new(m20240101_000009_create_private_room::Migration),
+            Box::new(m20240101_000010_create_room_invitation::Migration),
+            Box::new(m20240101_000011_create_room_participants::Migration),
         ]
     }
 }
@@ -41,9 +47,9 @@ pub enum MigrationCommand {
 pub async fn run_migration(command: MigrationCommand) -> Result<(), sea_orm::DbErr> {
     let database_url = std::env::var("DATABASE_URL")
         .unwrap_or_else(|_| "postgresql://localhost/sth_account".to_string());
-    
+
     let db: DatabaseConnection = sea_orm::Database::connect(&database_url).await?;
-    
+
     match command {
         MigrationCommand::Up => {
             Migrator::up(&db, None).await?;
@@ -69,6 +75,6 @@ pub async fn run_migration(command: MigrationCommand) -> Result<(), sea_orm::DbE
             println!("Run this command in the migration/ directory");
         }
     }
-    
+
     Ok(())
 }

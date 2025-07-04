@@ -5,6 +5,7 @@ pub mod database;
 pub mod error;
 pub mod health;
 pub mod jobs;
+pub mod queue;
 pub mod service;
 pub mod session_store;
 #[cfg(test)]

@@ -1,11 +1,9 @@
 use async_trait::async_trait;
 use chrono::Utc;
-use sea_orm::{
-    ActiveModelTrait, ColumnTrait, DatabaseConnection, EntityTrait, QueryFilter, Set,
-};
-use std::sync::Arc;
+use sea_orm::{ActiveModelTrait, ColumnTrait, DatabaseConnection, EntityTrait, QueryFilter, Set};
 use serde_json;
 use std::collections::HashMap;
+use std::sync::Arc;
 use time::OffsetDateTime;
 use tower_sessions::{
     session::{Id, Record},
@@ -40,7 +38,7 @@ impl SessionStore for SeaOrmSessionStore {
             // Generate new ID if collision detected
             session_record.id = Id::default();
         }
-        
+
         self.save(session_record).await
     }
 
@@ -52,7 +50,7 @@ impl SessionStore for SeaOrmSessionStore {
         // Convert time::OffsetDateTime to chrono::DateTime
         let expiry_chrono = chrono::DateTime::from_timestamp(
             session_record.expiry_date.unix_timestamp(),
-            session_record.expiry_date.nanosecond()
+            session_record.expiry_date.nanosecond(),
         )
         .ok_or_else(|| session_store::Error::Backend("Invalid expiry date".to_string()))?
         .fixed_offset();
@@ -70,13 +68,15 @@ impl SessionStore for SeaOrmSessionStore {
             session_update.expires_at = Set(expiry_chrono);
             session_update.last_active_at = Set(Some(Utc::now().into()));
             session_update.status = Set("Active".to_string());
-            session_update.update(self.db.as_ref()).await
+            session_update
+                .update(self.db.as_ref())
+                .await
                 .map_err(|e| session_store::Error::Backend(e.to_string()))?;
         } else {
             // Create new session - we'll need a placeholder user_id since sessions aren't tied to users yet
             // In a real implementation, you'd extract the user_id from the session data
             let placeholder_user_id = Uuid::new_v4(); // This should be extracted from session data
-            
+
             let new_session = user_session::ActiveModel {
                 id: Set(Uuid::new_v4()),
                 user_id: Set(placeholder_user_id),
@@ -88,7 +88,9 @@ impl SessionStore for SeaOrmSessionStore {
                 last_active_at: Set(Some(Utc::now().into())),
                 status: Set("Active".to_string()),
             };
-            new_session.insert(self.db.as_ref()).await
+            new_session
+                .insert(self.db.as_ref())
+                .await
                 .map_err(|e| session_store::Error::Backend(e.to_string()))?;
         }
 
@@ -97,7 +99,7 @@ impl SessionStore for SeaOrmSessionStore {
 
     async fn load(&self, session_id: &Id) -> session_store::Result<Option<Record>> {
         let session_id_str = session_id.to_string();
-        
+
         let session = user_session::Entity::find()
             .filter(user_session::Column::TokenHash.eq(&session_id_str))
             .filter(user_session::Column::Status.eq("Active"))
@@ -110,17 +112,19 @@ impl SessionStore for SeaOrmSessionStore {
             // For now, return an empty session data map since we're not storing session data in the user_session table
             // In a real implementation, you'd need to add a data column to store serialized session data
             let data = HashMap::new();
-            
+
             // Convert chrono::DateTime to time::OffsetDateTime
             let expiry_time = OffsetDateTime::from_unix_timestamp(session.expires_at.timestamp())
-                .map_err(|e| session_store::Error::Backend(format!("Invalid timestamp: {}", e)))?;
-            
+                .map_err(|e| {
+                session_store::Error::Backend(format!("Invalid timestamp: {}", e))
+            })?;
+
             let record = Record {
                 id: *session_id,
                 data,
                 expiry_date: expiry_time,
             };
-            
+
             Ok(Some(record))
         } else {
             Ok(None)
@@ -129,7 +133,7 @@ impl SessionStore for SeaOrmSessionStore {
 
     async fn delete(&self, session_id: &Id) -> session_store::Result<()> {
         let session_id_str = session_id.to_string();
-        
+
         let session = user_session::Entity::find()
             .filter(user_session::Column::TokenHash.eq(&session_id_str))
             .one(self.db.as_ref())
@@ -139,7 +143,9 @@ impl SessionStore for SeaOrmSessionStore {
         if let Some(session) = session {
             let mut session_update: user_session::ActiveModel = session.into();
             session_update.status = Set("Expired".to_string());
-            session_update.update(self.db.as_ref()).await
+            session_update
+                .update(self.db.as_ref())
+                .await
                 .map_err(|e| session_store::Error::Backend(e.to_string()))?;
         }
 
@@ -165,7 +171,6 @@ impl ExpiredDeletion for SeaOrmSessionStore {
         Ok(())
     }
 }
-
 
 #[cfg(test)]
 mod tests {
@@ -197,7 +202,10 @@ mod tests {
             device_info: None,
             ip_address: "127.0.0.1".to_string(),
             created_at: chrono::Utc::now().into(),
-            expires_at: chrono::Utc::now().checked_add_signed(chrono::Duration::hours(1)).unwrap().into(),
+            expires_at: chrono::Utc::now()
+                .checked_add_signed(chrono::Duration::hours(1))
+                .unwrap()
+                .into(),
             last_active_at: Some(chrono::Utc::now().into()),
             status: "Active".to_string(),
         }
@@ -228,9 +236,9 @@ mod tests {
 
         let store = SeaOrmSessionStore::new(Arc::new(db));
         let result = store.create(&mut record).await;
-        
+
         match result {
-            Ok(_) => {},
+            Ok(_) => {}
             Err(e) => panic!("Session store create failed: {:?}", e),
         }
     }
@@ -240,7 +248,7 @@ mod tests {
         let mut record = create_sample_record();
         let session_id = record.id.to_string();
         let existing_session = create_sample_session_model(&session_id);
-        
+
         // We'll need to create a session model for the new ID after collision
         let new_session_id = "new_session_id".to_string();
         let inserted_session = create_sample_session_model(&new_session_id);
@@ -272,9 +280,9 @@ mod tests {
         let store = SeaOrmSessionStore::new(Arc::new(db));
         let original_id = record.id;
         let result = store.create(&mut record).await;
-        
+
         match result {
-            Ok(_) => {},
+            Ok(_) => {}
             Err(e) => panic!("Session store create with collision failed: {:?}", e),
         }
         assert_ne!(record.id, original_id); // ID should have changed due to collision
@@ -305,9 +313,9 @@ mod tests {
 
         let store = SeaOrmSessionStore::new(Arc::new(db));
         let result = store.save(&record).await;
-        
+
         match result {
-            Ok(_) => {},
+            Ok(_) => {}
             Err(e) => panic!("Session store save existing failed: {:?}", e),
         }
     }
@@ -326,11 +334,11 @@ mod tests {
 
         let store = SeaOrmSessionStore::new(Arc::new(db));
         let result = store.load(&session_id).await;
-        
+
         assert!(result.is_ok());
         let loaded_record = result.unwrap();
         assert!(loaded_record.is_some());
-        
+
         let record = loaded_record.unwrap();
         assert_eq!(record.id, session_id);
     }
@@ -347,7 +355,7 @@ mod tests {
 
         let store = SeaOrmSessionStore::new(Arc::new(db));
         let result = store.load(&session_id).await;
-        
+
         assert!(result.is_ok());
         assert!(result.unwrap().is_none());
     }
@@ -377,9 +385,9 @@ mod tests {
 
         let store = SeaOrmSessionStore::new(Arc::new(db));
         let result = store.delete(&session_id).await;
-        
+
         match result {
-            Ok(_) => {},
+            Ok(_) => {}
             Err(e) => panic!("Session store delete failed: {:?}", e),
         }
     }
@@ -395,7 +403,7 @@ mod tests {
 
         let store = SeaOrmSessionStore::new(Arc::new(db));
         let result = store.delete_expired().await;
-        
+
         assert!(result.is_ok());
     }
 }

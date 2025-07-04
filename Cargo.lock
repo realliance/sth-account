@@ -50,6 +50,31 @@ source = "registry+https://github.com/rust-lang/crates.io-index"
 checksum = "683d7910e743518b0e34f1186f92494becacb047c7b6bf616c96772180fef923"
 
 [[package]]
+name = "amqp_serde"
+version = "0.4.2"
+source = "registry+https://github.com/rust-lang/crates.io-index"
+checksum = "46af430da4849b906416235798be5d0b8ff07e478d9809f05a00f81eb9527781"
+dependencies = [
+ "bytes",
+ "serde",
+ "serde_bytes",
+]
+
+[[package]]
+name = "amqprs"
+version = "2.1.2"
+source = "registry+https://github.com/rust-lang/crates.io-index"
+checksum = "09eb9026b3fa8fde34b006d442ee9d41eabe31aeb036e46eefaec8dc3a537736"
+dependencies = [
+ "amqp_serde",
+ "async-trait",
+ "bytes",
+ "serde",
+ "serde_bytes",
+ "tokio",
+]
+
+[[package]]
 name = "android-tzdata"
 version = "0.1.1"
 source = "registry+https://github.com/rust-lang/crates.io-index"
@@ -2882,6 +2907,15 @@ dependencies = [
 ]
 
 [[package]]
+name = "serde_bytes"
+version = "0.11.17"
+source = "registry+https://github.com/rust-lang/crates.io-index"
+checksum = "8437fd221bde2d4ca316d61b90e337e9e702b3820b87d63caa9ba6c02bd06d96"
+dependencies = [
+ "serde",
+]
+
+[[package]]
 name = "serde_derive"
 version = "1.0.219"
 source = "registry+https://github.com/rust-lang/crates.io-index"
@@ -3269,6 +3303,7 @@ checksum = "a2eb9349b6444b326872e140eb1cf5e7c522154d69e7a0ffb0fb81c06b37543f"
 name = "sth-account"
 version = "0.1.0"
 dependencies = [
+ "amqprs",
  "anyhow",
  "argon2",
  "async-trait",
@@ -3281,6 +3316,7 @@ dependencies = [
  "hyper 0.14.32",
  "jsonwebtoken",
  "migration",
+ "rand",
  "reqwest",
  "reqwest_cookie_store",
  "sea-orm",

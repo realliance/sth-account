@@ -29,6 +29,8 @@ tower-sessions = "0.12"
 tower-sessions-memory-store = "0.12"
 async-trait = "0.1"
 time = "0.3"
+amqprs = "2.1"
+rand = "0.8"
 
 [dependencies.sea-orm]
 version = "1.1.0"

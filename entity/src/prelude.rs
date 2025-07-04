@@ -3,8 +3,11 @@
 pub use super::bot::Entity as Bot;
 pub use super::game_history::Entity as GameHistory;
 pub use super::lobby_pool::Entity as LobbyPool;
-pub use super::queue::Entity as Queue;
 pub use super::r#match::Entity as Match;
+pub use super::private_room::Entity as PrivateRoom;
+pub use super::queue::Entity as Queue;
 pub use super::report::Entity as Report;
+pub use super::room_invitation::Entity as RoomInvitation;
+pub use super::room_participants::Entity as RoomParticipants;
 pub use super::user::Entity as User;
 pub use super::user_session::Entity as UserSession;

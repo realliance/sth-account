@@ -25,7 +25,7 @@ impl MigrationTrait for Migration {
                             .name("fk_session_user")
                             .from(UserSession::Table, UserSession::UserId)
                             .to(User::Table, User::Id)
-                            .on_delete(ForeignKeyAction::Cascade)
+                            .on_delete(ForeignKeyAction::Cascade),
                     )
                     .to_owned(),
             )
@@ -41,7 +41,7 @@ impl MigrationTrait for Migration {
                     .to_owned(),
             )
             .await?;
-            
+
         manager
             .create_index(
                 Index::create()
@@ -51,7 +51,7 @@ impl MigrationTrait for Migration {
                     .to_owned(),
             )
             .await?;
-            
+
         manager
             .create_index(
                 Index::create()
@@ -61,7 +61,6 @@ impl MigrationTrait for Migration {
                     .to_owned(),
             )
             .await
-
     }
 
     async fn down(&self, manager: &SchemaManager) -> Result<(), DbErr> {

@@ -1,7 +1,7 @@
 use axum::{
+    Json,
     http::StatusCode,
     response::{IntoResponse, Response},
-    Json,
 };
 use serde_json::json;
 use thiserror::Error;
@@ -12,37 +12,40 @@ pub type Result<T> = std::result::Result<T, AppError>;
 pub enum AppError {
     #[error("Database error: {0}")]
     Database(#[from] sea_orm::DbErr),
-    
+
     #[error("Migration error: {0}")]
     Migration(String),
-    
+
     #[error("Service error: {0}")]
     Service(String),
-    
+
     #[error("Worker error: {0}")]
     Worker(String),
-    
+
     #[error("Job error: {0}")]
     Job(String),
-    
+
     #[error("Configuration error: {0}")]
     Config(String),
-    
+
     #[error("IO error: {0}")]
     Io(#[from] std::io::Error),
-    
+
     #[error("Authentication error: {0}")]
     Auth(String),
-    
+
     #[error("Authorization error: {0}")]
     Forbidden(String),
-    
+
     #[error("Not found: {0}")]
     NotFound(String),
-    
+
     #[error("Bad request: {0}")]
     BadRequest(String),
-    
+
+    #[error("Validation error: {0}")]
+    Validation(String),
+
     #[error("Other error: {0}")]
     Other(#[from] anyhow::Error),
 }
@@ -92,6 +95,10 @@ impl IntoResponse for AppError {
             }
             AppError::BadRequest(ref e) => {
                 tracing::info!("Bad request: {}", e);
+                (StatusCode::BAD_REQUEST, e.as_str())
+            }
+            AppError::Validation(ref e) => {
+                tracing::info!("Validation error: {}", e);
                 (StatusCode::BAD_REQUEST, e.as_str())
             }
             AppError::Other(ref e) => {
