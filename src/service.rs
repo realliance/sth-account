@@ -15,8 +15,8 @@ use crate::{
     database,
     error::Result,
     health,
-    session_store::SeaOrmSessionStore,
     queue::{QueueProvider, RealQueueProvider, TestQueueProvider},
+    session_store::SeaOrmSessionStore,
 };
 use sea_orm::DatabaseConnection;
 use std::{env, sync::Arc};
@@ -33,23 +33,28 @@ pub async fn run_service() -> Result<()> {
     let db = Arc::new(database::establish_connection(&config).await?);
 
     // Initialize queue provider
-    let queue_provider: Arc<dyn QueueProvider> = if env::var("ENVIRONMENT").unwrap_or_default() == "test" {
-        Arc::new(TestQueueProvider::new())
-    } else {
-        let real_provider = RealQueueProvider::new();
-        // Try to connect to RabbitMQ if configured
-        if let (Ok(host), Ok(port), Ok(username), Ok(password)) = (
-            env::var("RABBITMQ_HOST"),
-            env::var("RABBITMQ_PORT").and_then(|p| p.parse::<u16>().map_err(|_| env::VarError::NotPresent)),
-            env::var("RABBITMQ_USERNAME"),
-            env::var("RABBITMQ_PASSWORD"),
-        ) {
-            if let Err(e) = real_provider.connect(&host, port, &username, &password).await {
-                tracing::warn!("Failed to connect to RabbitMQ: {}", e);
+    let queue_provider: Arc<dyn QueueProvider> =
+        if env::var("ENVIRONMENT").unwrap_or_default() == "test" {
+            Arc::new(TestQueueProvider::new())
+        } else {
+            let real_provider = RealQueueProvider::new();
+            // Try to connect to RabbitMQ if configured
+            if let (Ok(host), Ok(port), Ok(username), Ok(password)) = (
+                env::var("RABBITMQ_HOST"),
+                env::var("RABBITMQ_PORT")
+                    .and_then(|p| p.parse::<u16>().map_err(|_| env::VarError::NotPresent)),
+                env::var("RABBITMQ_USERNAME"),
+                env::var("RABBITMQ_PASSWORD"),
+            ) {
+                if let Err(e) = real_provider
+                    .connect(&host, port, &username, &password)
+                    .await
+                {
+                    tracing::warn!("Failed to connect to RabbitMQ: {}", e);
+                }
             }
-        }
-        Arc::new(real_provider)
-    };
+            Arc::new(real_provider)
+        };
 
     // Application state
     let state = AppState {

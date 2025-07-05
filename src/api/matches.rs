@@ -3,10 +3,7 @@ use axum::{
     http::{HeaderMap, StatusCode},
     response::Json,
 };
-use sea_orm::{
-    ColumnTrait, EntityTrait, PaginatorTrait, QueryFilter,
-    QueryOrder, QuerySelect,
-};
+use sea_orm::{ColumnTrait, EntityTrait, PaginatorTrait, QueryFilter, QueryOrder, QuerySelect};
 use serde::{Deserialize, Serialize};
 use uuid::Uuid;
 
@@ -507,7 +504,7 @@ mod tests {
         let server = TestServer::new(app).unwrap();
 
         let response = server
-            .method(Method::GET, &format!("/matches/user/{}", user_id))
+            .method(Method::GET, &format!("/api/v1/matches/user/{}", user_id))
             .await;
 
         assert_eq!(response.status_code(), StatusCode::UNAUTHORIZED);
@@ -529,7 +526,7 @@ mod tests {
         let server = TestServer::new(app).unwrap();
 
         let response = server
-            .method(Method::GET, &format!("/matches/bot/{}", bot_id))
+            .method(Method::GET, &format!("/api/v1/matches/bot/{}", bot_id))
             .await;
 
         assert_eq!(response.status_code(), StatusCode::UNAUTHORIZED);
@@ -551,7 +548,7 @@ mod tests {
         let server = TestServer::new(app).unwrap();
 
         let response = server
-            .method(Method::GET, &format!("/matches/{}", match_id))
+            .method(Method::GET, &format!("/api/v1/matches/{}", match_id))
             .await;
 
         assert_eq!(response.status_code(), StatusCode::UNAUTHORIZED);
@@ -573,7 +570,7 @@ mod tests {
         let server = TestServer::new(app).unwrap();
 
         let response = server
-            .method(Method::GET, &format!("/stats/user/{}", user_id))
+            .method(Method::GET, &format!("/api/v1/stats/user/{}", user_id))
             .await;
 
         assert_eq!(response.status_code(), StatusCode::UNAUTHORIZED);
@@ -595,7 +592,7 @@ mod tests {
         let server = TestServer::new(app).unwrap();
 
         let response = server
-            .method(Method::GET, &format!("/stats/bot/{}", bot_id))
+            .method(Method::GET, &format!("/api/v1/stats/bot/{}", bot_id))
             .await;
 
         assert_eq!(response.status_code(), StatusCode::UNAUTHORIZED);

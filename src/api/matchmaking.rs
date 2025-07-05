@@ -4,18 +4,17 @@ use axum::{
     response::Json,
 };
 use chrono::Utc;
-use sea_orm::{ActiveModelTrait, ColumnTrait, DatabaseConnection, EntityTrait, QueryFilter, Set};
+use sea_orm::{ActiveModelTrait, ColumnTrait, EntityTrait, QueryFilter, Set};
 use serde::{Deserialize, Serialize};
-use std::sync::Arc;
 use uuid::Uuid;
 
 use crate::{
     auth::AuthSession,
     error::{AppError, Result},
-    queue::{QueueProvider, messages::*},
+    queue::messages::*,
     service::AppState,
 };
-use entity::{bot, lobby_pool, queue, user};
+use entity::{bot, lobby_pool, queue};
 
 #[derive(Debug, Serialize)]
 pub struct QueueResponse {
@@ -114,7 +113,7 @@ pub async fn join_queue(
         preferred_mmr_range: request.preferred_mmr_range,
         joined_at,
     };
-    
+
     // Publish to queue, but don't fail the request if queue is down
     if let Err(e) = state.queue.publish_message(&outgoing_message).await {
         tracing::warn!("Failed to publish QueueJoin message: {}", e);
@@ -197,7 +196,7 @@ pub async fn join_queue_as_bot(
         preferred_mmr_range: request.preferred_mmr_range,
         joined_at,
     };
-    
+
     // Publish to queue, but don't fail the request if queue is down
     if let Err(e) = state.queue.publish_message(&outgoing_message).await {
         tracing::warn!("Failed to publish QueueJoin message: {}", e);
@@ -264,7 +263,7 @@ pub async fn leave_queue(
         participant_id: queue_entry.participant_id,
         left_at: Utc::now(),
     };
-    
+
     // Publish to queue, but don't fail the request if queue is down
     if let Err(e) = state.queue.publish_message(&outgoing_message).await {
         tracing::warn!("Failed to publish QueueLeave message: {}", e);
@@ -384,7 +383,6 @@ mod tests {
     use uuid::Uuid;
 
     use crate::test_utils::test_utils::*;
-    use entity::{bot, lobby_pool, queue};
 
     #[tokio::test]
     async fn test_join_queue_unauthorized() {
@@ -399,7 +397,7 @@ mod tests {
         });
 
         let response = server
-            .method(Method::POST, "/queue/join")
+            .method(Method::POST, "/api/v1/queue/join")
             .json(&request_body)
             .await;
 
@@ -428,7 +426,7 @@ mod tests {
         });
 
         let response = server
-            .method(Method::POST, "/queue/join-bot")
+            .method(Method::POST, "/api/v1/queue/join-bot")
             .json(&request_body)
             .await;
 
@@ -451,7 +449,7 @@ mod tests {
         let server = TestServer::new(app).unwrap();
 
         let response = server
-            .method(Method::DELETE, &format!("/queue/{}", queue_id))
+            .method(Method::DELETE, &format!("/api/v1/queue/{}", queue_id))
             .await;
 
         assert_eq!(response.status_code(), StatusCode::UNAUTHORIZED);
@@ -471,7 +469,7 @@ mod tests {
         let app = create_test_app(Arc::new(db));
         let server = TestServer::new(app).unwrap();
 
-        let response = server.method(Method::GET, "/queue/status").await;
+        let response = server.method(Method::GET, "/api/v1/queue/status").await;
 
         assert_eq!(response.status_code(), StatusCode::UNAUTHORIZED);
 
@@ -492,7 +490,10 @@ mod tests {
         let server = TestServer::new(app).unwrap();
 
         let response = server
-            .method(Method::GET, &format!("/queue/lobby/{}/stats", lobby_id))
+            .method(
+                Method::GET,
+                &format!("/api/v1/queue/lobby/{}/stats", lobby_id),
+            )
             .await;
 
         assert_eq!(response.status_code(), StatusCode::UNAUTHORIZED);

@@ -4,8 +4,7 @@ use crate::{
     error::Result,
     queue::{QueueClient, QueueConfig, messages::*},
 };
-use chrono::Utc;
-use sea_orm::{ActiveModelTrait, ColumnTrait, DatabaseConnection, EntityTrait, QueryFilter, Set};
+use sea_orm::{ActiveModelTrait, DatabaseConnection, EntityTrait, Set};
 use std::{env, sync::Arc};
 use tracing::{error, info, warn};
 use uuid::Uuid;

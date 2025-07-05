@@ -5,12 +5,8 @@ use axum::{
 };
 use chrono::Utc;
 use rand::{Rng, distributions::Alphanumeric};
-use sea_orm::{
-    ActiveModelTrait, ColumnTrait, DatabaseConnection, EntityTrait, PaginatorTrait, QueryFilter,
-    Set,
-};
+use sea_orm::{ActiveModelTrait, ColumnTrait, EntityTrait, PaginatorTrait, QueryFilter, Set};
 use serde::{Deserialize, Serialize};
-use std::sync::Arc;
 use uuid::Uuid;
 
 use crate::{
@@ -514,14 +510,13 @@ pub async fn get_room(
 mod tests {
     use axum::http::{Method, StatusCode};
     use axum_test::TestServer;
-    use sea_orm::{DatabaseBackend, MockDatabase, MockExecResult};
     use serde_json::json;
     use std::sync::Arc;
     use uuid::Uuid;
 
     use super::generate_room_code;
     use crate::test_utils::test_utils::*;
-    use entity::{private_room, room_participants, user};
+    use entity::{private_room, user};
 
     fn create_sample_user() -> user::Model {
         user::Model {

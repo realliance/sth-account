@@ -145,7 +145,7 @@ mod tests {
         let app = create_test_app(Arc::new(db));
         let server = TestServer::new(app).unwrap();
 
-        let response = server.method(Method::POST, "/auth/logout").await;
+        let response = server.method(Method::POST, "/api/v1/auth/logout").await;
 
         assert_eq!(response.status_code(), StatusCode::OK);
 
@@ -168,7 +168,7 @@ mod tests {
         let app = create_test_app(Arc::new(db));
         let server = TestServer::new(app).unwrap();
 
-        let response = server.method(Method::GET, "/auth/me").await;
+        let response = server.method(Method::GET, "/api/v1/auth/me").await;
 
         assert_eq!(response.status_code(), StatusCode::OK);
 
@@ -186,7 +186,7 @@ mod tests {
         let app = create_test_app(Arc::new(db));
         let server = TestServer::new(app).unwrap();
 
-        let response = server.method(Method::GET, "/auth/me").await;
+        let response = server.method(Method::GET, "/api/v1/auth/me").await;
 
         assert_eq!(response.status_code(), StatusCode::OK);
 

@@ -339,7 +339,7 @@ mod tests {
         let server = TestServer::new(app).unwrap();
 
         let response = server
-            .method(Method::GET, &format!("/lobbies/{}", lobby_id))
+            .method(Method::GET, &format!("/api/v1/lobbies/{}", lobby_id))
             .await;
 
         assert_eq!(response.status_code(), StatusCode::OK);
@@ -364,7 +364,7 @@ mod tests {
         let server = TestServer::new(app).unwrap();
 
         let response = server
-            .method(Method::GET, &format!("/lobbies/{}", lobby_id))
+            .method(Method::GET, &format!("/api/v1/lobbies/{}", lobby_id))
             .await;
 
         assert_eq!(response.status_code(), StatusCode::BAD_REQUEST);
@@ -386,7 +386,7 @@ mod tests {
         });
 
         let response = server
-            .method(Method::POST, "/lobbies")
+            .method(Method::POST, "/api/v1/lobbies")
             .json(&request_body)
             .await;
 
@@ -413,7 +413,7 @@ mod tests {
         });
 
         let response = server
-            .method(Method::PATCH, &format!("/lobbies/{}", lobby_id))
+            .method(Method::PATCH, &format!("/api/v1/lobbies/{}", lobby_id))
             .json(&request_body)
             .await;
 
@@ -436,7 +436,7 @@ mod tests {
         let server = TestServer::new(app).unwrap();
 
         let response = server
-            .method(Method::DELETE, &format!("/lobbies/{}", lobby_id))
+            .method(Method::DELETE, &format!("/api/v1/lobbies/{}", lobby_id))
             .await;
 
         assert_eq!(response.status_code(), StatusCode::UNAUTHORIZED);

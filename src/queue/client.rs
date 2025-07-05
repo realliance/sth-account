@@ -8,10 +8,9 @@ use amqprs::{
     connection::{Connection, OpenConnectionArguments},
 };
 use anyhow::Result;
-use serde::{Deserialize, Serialize};
 use std::sync::Arc;
 use tokio::sync::Mutex;
-use tracing::{error, info, warn};
+use tracing::{error, info};
 
 use super::messages::{IncomingMessage, OutgoingMessage, QueueConfig};
 
@@ -82,7 +81,7 @@ impl QueueClient {
     }
 
     /// Set up consumer for incoming messages (for Worker mode)
-    pub async fn setup_consumer<F>(&self, mut handler: F) -> Result<()>
+    pub async fn setup_consumer<F>(&self, handler: F) -> Result<()>
     where
         F: FnMut(IncomingMessage) -> Result<()> + Send + 'static,
     {
@@ -160,7 +159,7 @@ where
         &mut self,
         channel: &Channel,
         deliver: Deliver,
-        basic_properties: BasicProperties,
+        _basic_properties: BasicProperties,
         content: Vec<u8>,
     ) {
         match serde_json::from_slice::<IncomingMessage>(&content) {

@@ -270,7 +270,7 @@ mod tests {
         let server = TestServer::new(app).unwrap();
 
         let response = server
-            .method(Method::GET, &format!("/users/{}", user_id))
+            .method(Method::GET, &format!("/api/v1/users/{}", user_id))
             .await;
 
         // This test will currently fail due to authentication, but that's expected
@@ -295,7 +295,7 @@ mod tests {
         let server = TestServer::new(app).unwrap();
 
         let response = server
-            .method(Method::GET, &format!("/users/{}", user_id))
+            .method(Method::GET, &format!("/api/v1/users/{}", user_id))
             .await;
 
         assert_eq!(response.status_code(), StatusCode::UNAUTHORIZED);
@@ -336,7 +336,7 @@ mod tests {
         });
 
         let response = server
-            .method(Method::PATCH, &format!("/users/{}", user_id))
+            .method(Method::PATCH, &format!("/api/v1/users/{}", user_id))
             .json(&request_body)
             .await;
 
@@ -368,7 +368,7 @@ mod tests {
         let server = TestServer::new(app).unwrap();
 
         let response = server
-            .method(Method::DELETE, &format!("/users/{}", user_id))
+            .method(Method::DELETE, &format!("/api/v1/users/{}", user_id))
             .await;
 
         assert_eq!(response.status_code(), StatusCode::UNAUTHORIZED);

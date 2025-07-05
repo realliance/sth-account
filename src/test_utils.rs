@@ -18,8 +18,8 @@ pub mod test_utils {
         api::{auth as auth_handlers, bots, lobbies, matches, matchmaking, rooms, users},
         auth::Backend,
         health,
-        service::AppState,
         queue::TestQueueProvider,
+        service::AppState,
     };
     use entity::{bot, user};
 
@@ -44,11 +44,9 @@ pub mod test_utils {
         // Create API routes that match the main service structure
         let api_routes = Router::new()
             // Authentication routes
-            .route("/auth/login", axum::routing::post(auth_handlers::login))
             .route("/auth/logout", axum::routing::post(auth_handlers::logout))
             .route("/auth/me", axum::routing::get(auth_handlers::me))
-            // User routes
-            .route("/users", axum::routing::post(users::create_user))
+            // User routes (excluding public registration)
             .route("/users/:id", axum::routing::get(users::get_user))
             .route("/users/:id", axum::routing::patch(users::update_user))
             .route("/users/:id", axum::routing::delete(users::delete_user))
@@ -58,8 +56,7 @@ pub mod test_utils {
             .route("/bots/:id", axum::routing::patch(bots::update_bot))
             .route("/bots/:id", axum::routing::delete(bots::delete_bot))
             .route("/users/:id/bots", axum::routing::get(bots::get_user_bots))
-            // Lobby routes
-            .route("/lobbies", axum::routing::get(lobbies::get_lobbies))
+            // Lobby routes (excluding public lobby list)
             .route("/lobbies", axum::routing::post(lobbies::create_lobby))
             .route("/lobbies/all", axum::routing::get(lobbies::get_all_lobbies))
             .route("/lobbies/:id", axum::routing::get(lobbies::get_lobby))

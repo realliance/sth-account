@@ -1,11 +1,11 @@
-use async_trait::async_trait;
 use anyhow::Result;
+use async_trait::async_trait;
 use std::sync::Arc;
 use tokio::sync::Mutex;
 use tracing::{info, warn};
 
-use super::messages::OutgoingMessage;
 use super::client::QueueClient;
+use super::messages::OutgoingMessage;
 
 /// Trait for queue message publishing - allows for test vs real implementations
 #[async_trait]
@@ -27,12 +27,18 @@ impl RealQueueProvider {
     }
 
     /// Initialize the queue client connection
-    pub async fn connect(&self, host: &str, port: u16, username: &str, password: &str) -> Result<()> {
+    pub async fn connect(
+        &self,
+        host: &str,
+        port: u16,
+        username: &str,
+        password: &str,
+    ) -> Result<()> {
         let mut client_guard = self.client.lock().await;
-        
+
         let mut client = QueueClient::new(super::QueueConfig::default());
         client.connect(host, port, username, password).await?;
-        
+
         *client_guard = Some(client);
         info!("RealQueueProvider connected to RabbitMQ");
         Ok(())
@@ -43,11 +49,14 @@ impl RealQueueProvider {
 impl QueueProvider for RealQueueProvider {
     async fn publish_message(&self, message: &OutgoingMessage) -> Result<()> {
         let client_guard = self.client.lock().await;
-        
+
         if let Some(client) = client_guard.as_ref() {
             client.publish_outgoing(message).await
         } else {
-            warn!("Queue client not connected, message not sent: {:?}", message);
+            warn!(
+                "Queue client not connected, message not sent: {:?}",
+                message
+            );
             // Don't fail HTTP requests if queue is down - just log the issue
             Ok(())
         }
@@ -103,7 +112,7 @@ impl TestQueueProvider {
 impl QueueProvider for TestQueueProvider {
     async fn publish_message(&self, message: &OutgoingMessage) -> Result<()> {
         let should_fail = *self.should_fail.lock().await;
-        
+
         if should_fail {
             return Err(anyhow::anyhow!("Test queue provider configured to fail"));
         }
