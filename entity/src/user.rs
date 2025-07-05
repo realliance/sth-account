@@ -29,15 +29,35 @@ pub struct Model {
 pub enum Relation {
     #[sea_orm(has_many = "super::bot::Entity")]
     Bot,
+    #[sea_orm(has_many = "super::data_export_requests::Entity")]
+    DataExportRequests,
+    #[sea_orm(has_many = "super::notifications::Entity")]
+    Notifications,
     #[sea_orm(has_many = "super::private_room::Entity")]
     PrivateRoom,
+    #[sea_orm(has_many = "super::system_configuration::Entity")]
+    SystemConfiguration,
     #[sea_orm(has_many = "super::user_session::Entity")]
     UserSession,
+    #[sea_orm(has_one = "super::user_statistics::Entity")]
+    UserStatistics,
 }
 
 impl Related<super::bot::Entity> for Entity {
     fn to() -> RelationDef {
         Relation::Bot.def()
+    }
+}
+
+impl Related<super::data_export_requests::Entity> for Entity {
+    fn to() -> RelationDef {
+        Relation::DataExportRequests.def()
+    }
+}
+
+impl Related<super::notifications::Entity> for Entity {
+    fn to() -> RelationDef {
+        Relation::Notifications.def()
     }
 }
 
@@ -47,9 +67,21 @@ impl Related<super::private_room::Entity> for Entity {
     }
 }
 
+impl Related<super::system_configuration::Entity> for Entity {
+    fn to() -> RelationDef {
+        Relation::SystemConfiguration.def()
+    }
+}
+
 impl Related<super::user_session::Entity> for Entity {
     fn to() -> RelationDef {
         Relation::UserSession.def()
+    }
+}
+
+impl Related<super::user_statistics::Entity> for Entity {
+    fn to() -> RelationDef {
+        Relation::UserStatistics.def()
     }
 }
 

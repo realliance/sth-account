@@ -9,7 +9,7 @@ use tower_sessions::{Expiry, SessionManagerLayer};
 use tracing::info;
 
 use crate::{
-    api::{auth as auth_handlers, bots, lobbies, matches, matchmaking, rooms, users},
+    api::{admin, auth as auth_handlers, bots, exports, friends, lobbies, matches, matchmaking, notifications, rooms, users},
     auth::Backend,
     config::Config,
     database,
@@ -119,6 +119,32 @@ pub async fn run_service() -> Result<()> {
         .route("/matches/:id", get(matches::get_match))
         .route("/stats/user/:id", get(matches::get_user_stats))
         .route("/stats/bot/:id", get(matches::get_bot_stats))
+        // Friend system routes
+        .route("/friends", get(friends::get_friends))
+        .route("/friends/requests", post(friends::send_friend_request))
+        .route("/friends/requests", get(friends::get_pending_friend_requests))
+        .route("/friends/requests/:id", patch(friends::respond_to_friend_request))
+        .route("/friends/:id", delete(friends::remove_friend))
+        // Notification routes
+        .route("/notifications", get(notifications::get_notifications))
+        .route("/notifications/mark-read", post(notifications::mark_notifications_as_read))
+        .route("/notifications/mark-all-read", post(notifications::mark_all_notifications_as_read))
+        .route("/notifications/summary", get(notifications::get_notification_summary))
+        .route("/notifications/:id", delete(notifications::delete_notification))
+        // Data export routes
+        .route("/exports", post(exports::request_data_export))
+        .route("/exports", get(exports::get_export_requests))
+        .route("/exports/:id/download", get(exports::download_export))
+        .route("/exports/:id/cancel", delete(exports::cancel_export_request))
+        // Admin routes
+        .route("/admin/reports", get(admin::get_reports))
+        .route("/admin/reports/:id", patch(admin::update_report))
+        .route("/admin/users/:id/moderate", post(admin::moderate_user))
+        .route("/admin/config", get(admin::get_system_config))
+        .route("/admin/config", post(admin::update_system_config))
+        .route("/admin/audit-logs", get(admin::get_audit_logs))
+        .route("/admin/notifications", post(notifications::create_notification))
+        .route("/admin/exports/:id/complete", post(exports::complete_export))
         .with_state(state.clone());
 
     // Public routes (no auth required)

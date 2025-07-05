@@ -2,26 +2,40 @@
 
 pub mod prelude;
 
+pub mod audit_log;
 pub mod bot;
+pub mod bot_statistics;
+pub mod data_export_requests;
+pub mod friendship;
 pub mod game_history;
 pub mod lobby_pool;
 pub mod r#match;
+pub mod notifications;
 pub mod private_room;
 pub mod queue;
 pub mod report;
 pub mod room_invitation;
 pub mod room_participants;
+pub mod system_configuration;
 pub mod user;
 pub mod user_session;
+pub mod user_statistics;
 
+pub use audit_log::Entity as AuditLog;
 pub use bot::Entity as Bot;
+pub use bot_statistics::Entity as BotStatistics;
+pub use data_export_requests::Entity as DataExportRequests;
+pub use friendship::Entity as Friendship;
 pub use game_history::Entity as GameHistory;
 pub use lobby_pool::Entity as LobbyPool;
 pub use r#match::Entity as Match;
+pub use notifications::Entity as Notifications;
 pub use private_room::Entity as PrivateRoom;
 pub use queue::Entity as Queue;
 pub use report::Entity as Report;
 pub use room_invitation::Entity as RoomInvitation;
 pub use room_participants::Entity as RoomParticipants;
+pub use system_configuration::Entity as SystemConfiguration;
 pub use user::Entity as User;
 pub use user_session::Entity as UserSession;
+pub use user_statistics::Entity as UserStatistics;

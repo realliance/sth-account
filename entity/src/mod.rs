@@ -2,14 +2,21 @@
 
 pub mod prelude;
 
+pub mod audit_log;
 pub mod bot;
+pub mod bot_statistics;
+pub mod data_export_requests;
+pub mod friendship;
 pub mod game_history;
 pub mod lobby_pool;
 pub mod r#match;
+pub mod notifications;
 pub mod private_room;
 pub mod queue;
 pub mod report;
 pub mod room_invitation;
 pub mod room_participants;
+pub mod system_configuration;
 pub mod user;
 pub mod user_session;
+pub mod user_statistics;

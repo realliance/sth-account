@@ -15,13 +15,19 @@ pub mod test_utils {
     use uuid::Uuid;
 
     use crate::{
-        api::{auth as auth_handlers, bots, lobbies, matches, matchmaking, rooms, users},
+        api::{
+            admin, auth as auth_handlers, bots, exports, friends, lobbies, matches, matchmaking,
+            notifications, rooms, users,
+        },
         auth::Backend,
         health,
         queue::TestQueueProvider,
         service::AppState,
     };
-    use entity::{bot, user};
+    use entity::{
+        audit_log, bot, data_export_requests, friendship, system_configuration, user,
+        user_statistics,
+    };
 
     /// Create a test app with mock database and in-memory sessions
     pub fn create_test_app(db: Arc<DatabaseConnection>) -> Router {
@@ -105,6 +111,89 @@ pub mod test_utils {
                 axum::routing::get(matches::get_user_stats),
             )
             .route("/stats/bot/:id", axum::routing::get(matches::get_bot_stats))
+            // Friend system routes
+            .route("/friends", axum::routing::get(friends::get_friends))
+            .route(
+                "/friends/requests",
+                axum::routing::post(friends::send_friend_request),
+            )
+            .route(
+                "/friends/requests",
+                axum::routing::get(friends::get_pending_friend_requests),
+            )
+            .route(
+                "/friends/requests/:id",
+                axum::routing::patch(friends::respond_to_friend_request),
+            )
+            .route(
+                "/friends/:id",
+                axum::routing::delete(friends::remove_friend),
+            )
+            // Notification routes
+            .route(
+                "/notifications",
+                axum::routing::get(notifications::get_notifications),
+            )
+            .route(
+                "/notifications/mark-read",
+                axum::routing::post(notifications::mark_notifications_as_read),
+            )
+            .route(
+                "/notifications/mark-all-read",
+                axum::routing::post(notifications::mark_all_notifications_as_read),
+            )
+            .route(
+                "/notifications/summary",
+                axum::routing::get(notifications::get_notification_summary),
+            )
+            .route(
+                "/notifications/:id",
+                axum::routing::delete(notifications::delete_notification),
+            )
+            // Data export routes
+            .route(
+                "/exports",
+                axum::routing::post(exports::request_data_export),
+            )
+            .route("/exports", axum::routing::get(exports::get_export_requests))
+            .route(
+                "/exports/:id/download",
+                axum::routing::get(exports::download_export),
+            )
+            .route(
+                "/exports/:id/cancel",
+                axum::routing::delete(exports::cancel_export_request),
+            )
+            // Admin routes
+            .route("/admin/reports", axum::routing::get(admin::get_reports))
+            .route(
+                "/admin/reports/:id",
+                axum::routing::patch(admin::update_report),
+            )
+            .route(
+                "/admin/users/:id/moderate",
+                axum::routing::post(admin::moderate_user),
+            )
+            .route(
+                "/admin/config",
+                axum::routing::get(admin::get_system_config),
+            )
+            .route(
+                "/admin/config",
+                axum::routing::post(admin::update_system_config),
+            )
+            .route(
+                "/admin/audit-logs",
+                axum::routing::get(admin::get_audit_logs),
+            )
+            .route(
+                "/admin/notifications",
+                axum::routing::post(notifications::create_notification),
+            )
+            .route(
+                "/admin/exports/:id/complete",
+                axum::routing::post(exports::complete_export),
+            )
             .with_state(state.clone());
 
         // Create public routes
@@ -326,5 +415,97 @@ pub mod test_utils {
                 .send()
                 .await
         }
+    }
+
+    /// Create a sample friendship model for testing
+    pub fn sample_friendship(
+        requester_id: Uuid,
+        addressee_id: Uuid,
+        status: &str,
+    ) -> friendship::Model {
+        friendship::Model {
+            id: Uuid::new_v4(),
+            requester_id,
+            addressee_id,
+            status: status.to_string(),
+            created_at: Utc::now().into(),
+            updated_at: Utc::now().into(),
+        }
+    }
+
+    /// Create a sample notification model for testing
+    pub fn sample_notification(
+        user_id: Uuid,
+        notification_type: &str,
+    ) -> entity::notifications::Model {
+        entity::notifications::Model {
+            id: Uuid::new_v4(),
+            user_id,
+            r#type: notification_type.to_string(),
+            title: "Test Notification".to_string(),
+            message: "This is a test notification".to_string(),
+            related_id: None,
+            read: false,
+            created_at: Utc::now().into(),
+            expires_at: None,
+        }
+    }
+
+    /// Create a sample user statistics model for testing
+    pub fn sample_user_statistics(user_id: Uuid) -> user_statistics::Model {
+        user_statistics::Model {
+            user_id,
+            total_games: 10,
+            wins: 3,
+            second_place: 2,
+            third_place: 3,
+            fourth_place: 2,
+            average_score: Some(sea_orm::prelude::Decimal::new(25000, 0)),
+            peak_mmr: Some(1200),
+            current_streak: 2,
+            last_game_at: Some(Utc::now().into()),
+        }
+    }
+
+    /// Create a sample data export request model for testing
+    pub fn sample_export_request(user_id: Uuid, export_type: &str) -> data_export_requests::Model {
+        data_export_requests::Model {
+            id: Uuid::new_v4(),
+            user_id,
+            export_type: export_type.to_string(),
+            status: "Pending".to_string(),
+            file_path: None,
+            requested_at: Utc::now().into(),
+            completed_at: None,
+            expires_at: None,
+        }
+    }
+
+    /// Create a sample audit log model for testing
+    pub fn sample_audit_log(user_id: Uuid, action_type: &str) -> audit_log::Model {
+        audit_log::Model {
+            id: Uuid::new_v4(),
+            user_id,
+            action_type: action_type.to_string(),
+            details: Some(serde_json::json!({"test": "data"})),
+            ip_address: "127.0.0.1".to_string(),
+            moderator_id: None,
+            created_at: Utc::now().into(),
+            deleted_at: None,
+        }
+    }
+
+    /// Create an admin user for testing
+    pub fn sample_admin_user(id: Option<Uuid>) -> user::Model {
+        let mut user = sample_user(id);
+        user.role = "Admin".to_string();
+        user
+    }
+
+    /// Create a moderator user for testing
+    pub fn sample_moderator_user(id: Option<Uuid>) -> user::Model {
+        let mut user = sample_user(id);
+        user.role = "Moderator".to_string();
+        user
     }
 }

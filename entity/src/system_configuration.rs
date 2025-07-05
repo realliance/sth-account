@@ -4,42 +4,29 @@ use sea_orm::entity::prelude::*;
 use serde::{Deserialize, Serialize};
 
 #[derive(Clone, Debug, PartialEq, DeriveEntityModel, Eq, Serialize, Deserialize, Default)]
-#[sea_orm(table_name = "bot")]
+#[sea_orm(table_name = "system_configuration")]
 pub struct Model {
     #[sea_orm(primary_key, auto_increment = false)]
     pub id: Uuid,
-    pub name: String,
-    pub owner_id: Uuid,
-    pub source_code: Option<String>,
-    pub matchmaking_rank: i32,
-    pub api_key: String,
-    pub live: bool,
-    pub icon: Option<String>,
+    #[sea_orm(unique)]
+    pub key: String,
+    pub value: Json,
     #[sea_orm(column_type = "Text", nullable)]
     pub description: Option<String>,
-    pub version: Option<String>,
-    pub last_heartbeat: Option<DateTimeWithTimeZone>,
-    pub created_at: DateTimeWithTimeZone,
+    pub updated_by: Uuid,
+    pub updated_at: DateTimeWithTimeZone,
 }
 
 #[derive(Copy, Clone, Debug, EnumIter, DeriveRelation)]
 pub enum Relation {
-    #[sea_orm(has_one = "super::bot_statistics::Entity")]
-    BotStatistics,
     #[sea_orm(
         belongs_to = "super::user::Entity",
-        from = "Column::OwnerId",
+        from = "Column::UpdatedBy",
         to = "super::user::Column::Id",
         on_update = "NoAction",
         on_delete = "Cascade"
     )]
     User,
-}
-
-impl Related<super::bot_statistics::Entity> for Entity {
-    fn to() -> RelationDef {
-        Relation::BotStatistics.def()
-    }
 }
 
 impl Related<super::user::Entity> for Entity {

@@ -11,6 +11,13 @@ mod m20240101_000008_create_report;
 mod m20240101_000009_create_private_room;
 mod m20240101_000010_create_room_invitation;
 mod m20240101_000011_create_room_participants;
+mod m20240101_000012_create_user_statistics;
+mod m20240101_000013_create_friendship;
+mod m20240101_000014_create_notifications;
+mod m20240101_000015_create_audit_log;
+mod m20240101_000016_create_data_export_requests;
+mod m20240101_000017_create_bot_statistics;
+mod m20240101_000018_create_system_configuration;
 
 pub struct Migrator;
 
@@ -29,6 +36,13 @@ impl MigratorTrait for Migrator {
             Box::new(m20240101_000009_create_private_room::Migration),
             Box::new(m20240101_000010_create_room_invitation::Migration),
             Box::new(m20240101_000011_create_room_participants::Migration),
+            Box::new(m20240101_000012_create_user_statistics::Migration),
+            Box::new(m20240101_000013_create_friendship::Migration),
+            Box::new(m20240101_000014_create_notifications::Migration),
+            Box::new(m20240101_000015_create_audit_log::Migration),
+            Box::new(m20240101_000016_create_data_export_requests::Migration),
+            Box::new(m20240101_000017_create_bot_statistics::Migration),
+            Box::new(m20240101_000018_create_system_configuration::Migration),
         ]
     }
 }
