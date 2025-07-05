@@ -17,7 +17,7 @@ use crate::{
     error::{AppError, Result},
     service::AppState,
 };
-use entity::{data_export_requests, user, user_statistics, bot, friendship, notifications};
+use entity::{data_export_requests, user, user_statistics, bot, friendship, notifications, r#match, lobby_pool};
 
 
 #[derive(Debug, Serialize)]
@@ -423,10 +423,49 @@ async fn generate_user_data_export(
         })
         .collect();
 
-    // Recent matches (last 50) - This is a simplified version
-    // In a real implementation, you'd need to join with the match table
-    // and extract the user's participation details
-    let recent_matches = Vec::new(); // TODO: Implement match history extraction
+    // Recent matches (last 50) where the user participated
+    let recent_matches_data = r#match::Entity::find()
+        .filter(
+            r#match::Column::Participant1Id.eq(user.id)
+                .or(r#match::Column::Participant2Id.eq(user.id))
+                .or(r#match::Column::Participant3Id.eq(user.id))
+                .or(r#match::Column::Participant4Id.eq(user.id))
+        )
+        .find_also_related(lobby_pool::Entity)
+        .order_by_desc(r#match::Column::StartedAt)
+        .limit(50)
+        .all(&*state.db)
+        .await?;
+
+    let mut recent_matches = Vec::new();
+    for (match_data, lobby_option) in recent_matches_data {
+        // Find which participant slot this user was in
+        let (participant_score, participant_mmr_delta) = 
+            if match_data.participant1_id == user.id {
+                (match_data.participant1_score, match_data.participant1_mmr_delta)
+            } else if match_data.participant2_id == user.id {
+                (match_data.participant2_score, match_data.participant2_mmr_delta)
+            } else if match_data.participant3_id == user.id {
+                (match_data.participant3_score, match_data.participant3_mmr_delta)
+            } else if match_data.participant4_id.map_or(false, |id| id == user.id) {
+                (match_data.participant4_score, match_data.participant4_mmr_delta)
+            } else {
+                (None, None) // This shouldn't happen given our filter
+            };
+
+        let lobby_name = lobby_option
+            .map(|lobby| lobby.name)
+            .unwrap_or_else(|| "Unknown Lobby".to_string());
+
+        recent_matches.push(MatchExport {
+            match_id: match_data.id,
+            lobby_name,
+            started_at: match_data.started_at,
+            completed_at: match_data.completed_at,
+            participant_score,
+            participant_mmr_delta,
+        });
+    }
 
     let export_metadata = ExportMetadata {
         export_date: Utc::now(),
