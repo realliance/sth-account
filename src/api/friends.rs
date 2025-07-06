@@ -9,7 +9,12 @@ use serde::{Deserialize, Serialize};
 use utoipa::ToSchema;
 use uuid::Uuid;
 
-use crate::{api::add_rate_limit_headers, auth::AuthSession, error::{AppError, Result}, service::AppState};
+use crate::{
+    api::add_rate_limit_headers,
+    auth::AuthSession,
+    error::{AppError, Result},
+    service::AppState,
+};
 use entity::{friendship, notifications, user};
 
 #[cfg(test)]
@@ -29,8 +34,8 @@ mod tests {
         let server = TestServer::new(app).unwrap();
 
         let endpoints = [
-            ("/api/v1/friends", Method::GET),
-            ("/api/v1/friends/requests", Method::GET),
+            ("/v1/friends", Method::GET),
+            ("/v1/friends/requests", Method::GET),
         ];
 
         for (endpoint, method) in &endpoints {
@@ -54,7 +59,7 @@ mod tests {
         let server = TestServer::new(app).unwrap();
 
         let response = server
-            .method(Method::POST, "/api/v1/friends/requests")
+            .method(Method::POST, "/v1/friends/requests")
             .json(&json!({"addressee_username": "test"}))
             .await;
         assert!(
@@ -77,7 +82,7 @@ mod tests {
         let server = TestServer::new(app).unwrap();
 
         let response = server
-            .method(Method::POST, "/api/v1/friends/requests")
+            .method(Method::POST, "/v1/friends/requests")
             .json(&json!({}))
             .await;
 
@@ -135,7 +140,7 @@ mod tests {
         let server = TestServer::new(app).unwrap();
 
         let response = server
-            .method(Method::POST, "/api/v1/friends/requests")
+            .method(Method::POST, "/v1/friends/requests")
             .json(&json!({"addressee_username": "targetuser"}))
             .await;
 
@@ -156,7 +161,7 @@ mod tests {
         let server = TestServer::new(app).unwrap();
 
         let response = server
-            .method(Method::POST, "/api/v1/friends/requests")
+            .method(Method::POST, "/v1/friends/requests")
             .json(&json!({"addressee_username": "nonexistentuser"}))
             .await;
 
@@ -191,7 +196,7 @@ mod tests {
         let server = TestServer::new(app).unwrap();
 
         let response = server
-            .method(Method::POST, "/api/v1/friends/requests")
+            .method(Method::POST, "/v1/friends/requests")
             .json(&json!({"addressee_username": "targetuser"}))
             .await;
 
@@ -241,9 +246,9 @@ mod tests {
         let response = server
             .method(
                 Method::POST,
-                &format!("/api/v1/friends/requests/{friendship_id}/respond"),
+                &format!("/v1/friends/requests/{friendship_id}/respond"),
             )
-            .json(&json!{"accept": true})
+            .json(&json!({"accept": true}))
             .await;
 
         assert!(
@@ -281,7 +286,7 @@ mod tests {
         let app = create_test_app(Arc::new(db));
         let server = TestServer::new(app).unwrap();
 
-        let response = server.method(Method::GET, "/api/v1/friends").await;
+        let response = server.method(Method::GET, "/v1/friends").await;
 
         assert_eq!(response.status_code(), StatusCode::UNAUTHORIZED);
     }
@@ -313,7 +318,7 @@ mod tests {
         let app = create_test_app(Arc::new(db));
         let server = TestServer::new(app).unwrap();
 
-        let response = server.method(Method::GET, "/api/v1/friends/requests").await;
+        let response = server.method(Method::GET, "/v1/friends/requests").await;
 
         assert_eq!(response.status_code(), StatusCode::UNAUTHORIZED);
     }
@@ -345,7 +350,7 @@ mod tests {
         let server = TestServer::new(app).unwrap();
 
         let response = server
-            .method(Method::DELETE, &format!("/api/v1/friends/{friendship_id}"))
+            .method(Method::DELETE, &format!("/v1/friends/{friendship_id}"))
             .await;
 
         assert_eq!(response.status_code(), StatusCode::UNAUTHORIZED);
@@ -385,7 +390,7 @@ pub struct RespondToFriendRequestRequest {
 
 #[utoipa::path(
     post,
-    path = "/api/v1/friends/requests",
+    path = "/v1/friends/requests",
     tag = "Friends",
     request_body = SendFriendRequestRequest,
     responses(
@@ -483,7 +488,7 @@ pub async fn send_friend_request(
 
 #[utoipa::path(
     patch,
-    path = "/api/v1/friends/requests/{id}",
+    path = "/v1/friends/requests/{id}",
     tag = "Friends",
     params(
         ("id" = Uuid, Path, description = "Friendship request ID")
@@ -591,7 +596,7 @@ pub async fn respond_to_friend_request(
 
 #[utoipa::path(
     get,
-    path = "/api/v1/friends",
+    path = "/v1/friends",
     tag = "Friends",
     responses(
         (status = 200, description = "List of friends", body = Vec<FriendshipResponse>),
@@ -660,7 +665,7 @@ pub async fn get_friends(
 
 #[utoipa::path(
     get,
-    path = "/api/v1/friends/requests",
+    path = "/v1/friends/requests",
     tag = "Friends",
     responses(
         (status = 200, description = "List of pending friend requests", body = Vec<FriendshipResponse>),
@@ -722,7 +727,7 @@ pub async fn get_pending_friend_requests(
 
 #[utoipa::path(
     delete,
-    path = "/api/v1/friends/{id}",
+    path = "/v1/friends/{id}",
     tag = "Friends",
     params(
         ("id" = Uuid, Path, description = "Friendship ID")

@@ -235,7 +235,7 @@ pub async fn run_service() -> Result<()> {
         .on_response(DefaultOnResponse::new().level(tracing::Level::INFO));
 
     let app = Router::new()
-        .nest("/api/v1", api_router)
+        .nest("/v1", api_router)
         .merge(public_routes)
         .merge(openapi::add_docs_routes(Router::new(), openapi_spec))
         .layer(

@@ -70,7 +70,7 @@ pub struct InviteToRoomRequest {
 
 #[utoipa::path(
     post,
-    path = "/api/v1/rooms",
+    path = "/v1/rooms",
     tag = "Rooms",
     request_body = CreateRoomRequest,
     responses(
@@ -178,7 +178,7 @@ pub fn generate_room_code() -> String {
 
 #[utoipa::path(
     post,
-    path = "/api/v1/rooms/join",
+    path = "/v1/rooms/join",
     tag = "Rooms",
     request_body = JoinRoomRequest,
     responses(
@@ -274,7 +274,7 @@ pub async fn join_room(
 
 #[utoipa::path(
     post,
-    path = "/api/v1/rooms/{id}/leave",
+    path = "/v1/rooms/{id}/leave",
     tag = "Rooms",
     params(
         ("id" = Uuid, Path, description = "Room ID")
@@ -352,7 +352,7 @@ pub async fn leave_room(
 
 #[utoipa::path(
     get,
-    path = "/api/v1/rooms",
+    path = "/v1/rooms",
     tag = "Rooms",
     responses(
         (status = 200, description = "List of user's rooms", body = Vec<PrivateRoomResponse>),
@@ -404,7 +404,7 @@ pub async fn get_user_rooms(
 
 #[utoipa::path(
     post,
-    path = "/api/v1/rooms/{id}/invite",
+    path = "/v1/rooms/{id}/invite",
     tag = "Rooms",
     params(
         ("id" = Uuid, Path, description = "Room ID")
@@ -522,7 +522,7 @@ pub async fn invite_to_room(
 
 #[utoipa::path(
     get,
-    path = "/api/v1/rooms/{id}",
+    path = "/v1/rooms/{id}",
     tag = "Rooms",
     params(
         ("id" = Uuid, Path, description = "Room ID")
@@ -608,7 +608,7 @@ mod tests {
         });
 
         let response = server
-            .method(Method::POST, "/api/v1/rooms")
+            .method(Method::POST, "/v1/rooms")
             .json(&request_body)
             .await;
 
@@ -627,7 +627,7 @@ mod tests {
         });
 
         let response = server
-            .method(Method::POST, "/api/v1/rooms/join")
+            .method(Method::POST, "/v1/rooms/join")
             .json(&request_body)
             .await;
 
@@ -641,7 +641,7 @@ mod tests {
         let app = create_test_app(Arc::new(db));
         let server = TestServer::new(app).unwrap();
 
-        let response = server.method(Method::GET, "/api/v1/rooms").await;
+        let response = server.method(Method::GET, "/v1/rooms").await;
 
         // Should return unauthorized since we're not authenticated
         assert_eq!(response.status_code(), StatusCode::UNAUTHORIZED);

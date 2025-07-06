@@ -57,14 +57,14 @@ mod tests {
         let server = TestServer::new(app).unwrap();
 
         let endpoints = [
-            "/api/v1/friends",
-            "/api/v1/friends/requests",
-            "/api/v1/notifications",
-            "/api/v1/notifications/summary",
-            "/api/v1/exports",
-            "/api/v1/admin/reports",
-            "/api/v1/admin/config",
-            "/api/v1/admin/audit-logs",
+            "/v1/friends",
+            "/v1/friends/requests",
+            "/v1/notifications",
+            "/v1/notifications/summary",
+            "/v1/exports",
+            "/v1/admin/reports",
+            "/v1/admin/config",
+            "/v1/admin/audit-logs",
         ];
 
         for endpoint in &endpoints {
@@ -84,7 +84,7 @@ mod tests {
         let app = create_test_app(Arc::new(db));
         let server = TestServer::new(app).unwrap();
 
-        let response = server.method(Method::GET, "/api/v1/friends").await;
+        let response = server.method(Method::GET, "/v1/friends").await;
 
         let content_type = response
             .headers()

@@ -57,7 +57,7 @@ pub struct JoinQueueAsBotRequest {
 
 #[utoipa::path(
     post,
-    path = "/api/v1/queue/join",
+    path = "/v1/queue/join",
     tag = "Matchmaking",
     request_body = JoinQueueRequest,
     responses(
@@ -139,7 +139,7 @@ pub async fn join_queue(
 
 #[utoipa::path(
     post,
-    path = "/api/v1/queue/join-bot",
+    path = "/v1/queue/join-bot",
     tag = "Matchmaking",
     request_body = JoinQueueAsBotRequest,
     responses(
@@ -236,7 +236,7 @@ pub async fn join_queue_as_bot(
 
 #[utoipa::path(
     delete,
-    path = "/api/v1/queue/{id}",
+    path = "/v1/queue/{id}",
     tag = "Matchmaking",
     params(
         ("id" = Uuid, Path, description = "Queue entry ID")
@@ -322,7 +322,7 @@ pub async fn leave_queue(
 
 #[utoipa::path(
     get,
-    path = "/api/v1/queue/status",
+    path = "/v1/queue/status",
     tag = "Matchmaking",
     responses(
         (status = 200, description = "Current queue status for user", body = Vec<QueueResponse>),
@@ -374,7 +374,7 @@ pub async fn get_queue_status(
 
 #[utoipa::path(
     get,
-    path = "/api/v1/queue/lobby/{id}/stats",
+    path = "/v1/queue/lobby/{id}/stats",
     tag = "Matchmaking",
     params(
         ("id" = Uuid, Path, description = "Lobby ID")
@@ -466,7 +466,7 @@ mod tests {
         });
 
         let response = server
-            .method(Method::POST, "/api/v1/queue/join")
+            .method(Method::POST, "/v1/queue/join")
             .json(&request_body)
             .await;
 
@@ -495,7 +495,7 @@ mod tests {
         });
 
         let response = server
-            .method(Method::POST, "/api/v1/queue/join-bot")
+            .method(Method::POST, "/v1/queue/join-bot")
             .json(&request_body)
             .await;
 
@@ -518,7 +518,7 @@ mod tests {
         let server = TestServer::new(app).unwrap();
 
         let response = server
-            .method(Method::DELETE, &format!("/api/v1/queue/{queue_id}"))
+            .method(Method::DELETE, &format!("/v1/queue/{queue_id}"))
             .await;
 
         assert_eq!(response.status_code(), StatusCode::UNAUTHORIZED);
@@ -538,7 +538,7 @@ mod tests {
         let app = create_test_app(Arc::new(db));
         let server = TestServer::new(app).unwrap();
 
-        let response = server.method(Method::GET, "/api/v1/queue/status").await;
+        let response = server.method(Method::GET, "/v1/queue/status").await;
 
         assert_eq!(response.status_code(), StatusCode::UNAUTHORIZED);
 
@@ -559,10 +559,7 @@ mod tests {
         let server = TestServer::new(app).unwrap();
 
         let response = server
-            .method(
-                Method::GET,
-                &format!("/api/v1/queue/lobby/{lobby_id}/stats"),
-            )
+            .method(Method::GET, &format!("/v1/queue/lobby/{lobby_id}/stats"))
             .await;
 
         assert_eq!(response.status_code(), StatusCode::UNAUTHORIZED);

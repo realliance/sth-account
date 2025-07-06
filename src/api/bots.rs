@@ -70,7 +70,7 @@ pub struct UpdateBotRequest {
 
 #[utoipa::path(
     post,
-    path = "/api/v1/bots",
+    path = "/v1/bots",
     tag = "Bots",
     request_body = CreateBotRequest,
     responses(
@@ -130,7 +130,7 @@ pub async fn create_bot(
 
 #[utoipa::path(
     get,
-    path = "/api/v1/bots/{id}",
+    path = "/v1/bots/{id}",
     tag = "Bots",
     params(
         ("id" = Uuid, Path, description = "Bot ID")
@@ -158,7 +158,7 @@ pub async fn get_bot(
 
 #[utoipa::path(
     patch,
-    path = "/api/v1/bots/{id}",
+    path = "/v1/bots/{id}",
     tag = "Bots",
     params(
         ("id" = Uuid, Path, description = "Bot ID")
@@ -236,7 +236,7 @@ pub async fn update_bot(
 
 #[utoipa::path(
     delete,
-    path = "/api/v1/bots/{id}",
+    path = "/v1/bots/{id}",
     tag = "Bots",
     params(
         ("id" = Uuid, Path, description = "Bot ID")
@@ -283,7 +283,7 @@ pub async fn delete_bot(
 
 #[utoipa::path(
     get,
-    path = "/api/v1/users/{id}/bots",
+    path = "/v1/users/{id}/bots",
     tag = "Bots",
     params(
         ("id" = Uuid, Path, description = "User ID")
@@ -365,7 +365,7 @@ mod tests {
         });
 
         let response = server
-            .method(Method::POST, "/api/v1/bots")
+            .method(Method::POST, "/v1/bots")
             .json(&request_body)
             .await;
 
@@ -403,7 +403,7 @@ mod tests {
         });
 
         let response = server
-            .method(Method::POST, "/api/v1/bots")
+            .method(Method::POST, "/v1/bots")
             .json(&request_body)
             .await;
 
@@ -434,7 +434,7 @@ mod tests {
         let server = TestServer::new(app).unwrap();
 
         let response = server
-            .method(Method::GET, &format!("/api/v1/bots/{bot_id}"))
+            .method(Method::GET, &format!("/v1/bots/{bot_id}"))
             .await;
 
         assert_eq!(response.status_code(), StatusCode::OK);
@@ -458,7 +458,7 @@ mod tests {
         let server = TestServer::new(app).unwrap();
 
         let response = server
-            .method(Method::GET, &format!("/api/v1/bots/{bot_id}"))
+            .method(Method::GET, &format!("/v1/bots/{bot_id}"))
             .await;
 
         assert_eq!(response.status_code(), StatusCode::BAD_REQUEST);
@@ -498,7 +498,7 @@ mod tests {
         });
 
         let response = server
-            .method(Method::PATCH, &format!("/api/v1/bots/{bot_id}"))
+            .method(Method::PATCH, &format!("/v1/bots/{bot_id}"))
             .json(&request_body)
             .await;
 
@@ -538,7 +538,7 @@ mod tests {
         });
 
         let response = server
-            .method(Method::PATCH, &format!("/api/v1/bots/{bot_id}"))
+            .method(Method::PATCH, &format!("/v1/bots/{bot_id}"))
             .json(&request_body)
             .await;
 
@@ -574,7 +574,7 @@ mod tests {
         let server = TestServer::new(app).unwrap();
 
         let response = server
-            .method(Method::DELETE, &format!("/api/v1/bots/{bot_id}"))
+            .method(Method::DELETE, &format!("/v1/bots/{bot_id}"))
             .await;
 
         assert_eq!(response.status_code(), StatusCode::UNAUTHORIZED);
@@ -609,7 +609,7 @@ mod tests {
         let server = TestServer::new(app).unwrap();
 
         let response = server
-            .method(Method::GET, &format!("/api/v1/users/{user_id}/bots"))
+            .method(Method::GET, &format!("/v1/users/{user_id}/bots"))
             .await;
 
         assert_eq!(response.status_code(), StatusCode::UNAUTHORIZED);
@@ -639,7 +639,7 @@ mod tests {
         let server = TestServer::new(app).unwrap();
 
         let response = server
-            .method(Method::GET, &format!("/api/v1/users/{owner_id}/bots"))
+            .method(Method::GET, &format!("/v1/users/{owner_id}/bots"))
             .await;
 
         assert_eq!(response.status_code(), StatusCode::UNAUTHORIZED);

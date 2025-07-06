@@ -134,7 +134,7 @@ pub struct BotStatsResponse {
 
 #[utoipa::path(
     get,
-    path = "/api/v1/matches/user/{id}",
+    path = "/v1/matches/user/{id}",
     tag = "Matches",
     params(
         MatchQuery,
@@ -210,7 +210,7 @@ pub async fn get_user_match_history(
 
 #[utoipa::path(
     get,
-    path = "/api/v1/matches/bot/{id}",
+    path = "/v1/matches/bot/{id}",
     tag = "Matches",
     params(
         MatchQuery,
@@ -292,7 +292,7 @@ pub async fn get_bot_match_history(
 
 #[utoipa::path(
     get,
-    path = "/api/v1/matches/{id}",
+    path = "/v1/matches/{id}",
     tag = "Matches",
     params(
         ("id" = Uuid, Path, description = "Match ID")
@@ -357,7 +357,7 @@ pub async fn get_match(
 
 #[utoipa::path(
     get,
-    path = "/api/v1/stats/user/{id}",
+    path = "/v1/stats/user/{id}",
     tag = "Statistics",
     params(
         ("id" = Uuid, Path, description = "User ID")
@@ -469,7 +469,7 @@ pub async fn get_user_stats(
 
 #[utoipa::path(
     get,
-    path = "/api/v1/stats/bot/{id}",
+    path = "/v1/stats/bot/{id}",
     tag = "Statistics",
     params(
         ("id" = Uuid, Path, description = "Bot ID")
@@ -597,7 +597,7 @@ mod tests {
         let server = TestServer::new(app).unwrap();
 
         let response = server
-            .method(Method::GET, &format!("/api/v1/matches/user/{user_id}"))
+            .method(Method::GET, &format!("/v1/matches/user/{user_id}"))
             .await;
 
         assert_eq!(response.status_code(), StatusCode::UNAUTHORIZED);
@@ -619,7 +619,7 @@ mod tests {
         let server = TestServer::new(app).unwrap();
 
         let response = server
-            .method(Method::GET, &format!("/api/v1/matches/bot/{bot_id}"))
+            .method(Method::GET, &format!("/v1/matches/bot/{bot_id}"))
             .await;
 
         assert_eq!(response.status_code(), StatusCode::UNAUTHORIZED);
@@ -641,7 +641,7 @@ mod tests {
         let server = TestServer::new(app).unwrap();
 
         let response = server
-            .method(Method::GET, &format!("/api/v1/matches/{match_id}"))
+            .method(Method::GET, &format!("/v1/matches/{match_id}"))
             .await;
 
         assert_eq!(response.status_code(), StatusCode::UNAUTHORIZED);
@@ -663,7 +663,7 @@ mod tests {
         let server = TestServer::new(app).unwrap();
 
         let response = server
-            .method(Method::GET, &format!("/api/v1/stats/user/{user_id}"))
+            .method(Method::GET, &format!("/v1/stats/user/{user_id}"))
             .await;
 
         assert_eq!(response.status_code(), StatusCode::UNAUTHORIZED);
@@ -685,7 +685,7 @@ mod tests {
         let server = TestServer::new(app).unwrap();
 
         let response = server
-            .method(Method::GET, &format!("/api/v1/stats/bot/{bot_id}"))
+            .method(Method::GET, &format!("/v1/stats/bot/{bot_id}"))
             .await;
 
         assert_eq!(response.status_code(), StatusCode::UNAUTHORIZED);
@@ -741,7 +741,7 @@ mod tests {
         let response = server
             .method(
                 Method::GET,
-                &format!("/api/v1/matches/user/{user_id}?limit=10"),
+                &format!("/v1/matches/user/{user_id}?limit=10"),
             )
             .await;
 
@@ -769,7 +769,7 @@ mod tests {
         let response = server
             .method(
                 Method::GET,
-                &format!("/api/v1/matches/user/{other_user_id}"),
+                &format!("/v1/matches/user/{other_user_id}"),
             )
             .await;
 
@@ -816,7 +816,7 @@ mod tests {
         let server = TestServer::new(app).unwrap();
 
         let response = server
-            .method(Method::GET, &format!("/api/v1/matches/{match_id}"))
+            .method(Method::GET, &format!("/v1/matches/{match_id}"))
             .await;
 
         assert_eq!(response.status_code(), StatusCode::UNAUTHORIZED);
@@ -863,7 +863,7 @@ mod tests {
         let server = TestServer::new(app).unwrap();
 
         let response = server
-            .method(Method::GET, &format!("/api/v1/matches/{match_id}"))
+            .method(Method::GET, &format!("/v1/matches/{match_id}"))
             .await;
 
         assert_eq!(response.status_code(), StatusCode::UNAUTHORIZED);
@@ -910,7 +910,7 @@ mod tests {
         let server = TestServer::new(app).unwrap();
 
         let response = server
-            .method(Method::GET, &format!("/api/v1/stats/user/{user_id}"))
+            .method(Method::GET, &format!("/v1/stats/user/{user_id}"))
             .await;
 
         assert_eq!(response.status_code(), StatusCode::UNAUTHORIZED);
@@ -972,7 +972,7 @@ mod tests {
         let server = TestServer::new(app).unwrap();
 
         let response = server
-            .method(Method::GET, &format!("/api/v1/matches/bot/{bot_id}"))
+            .method(Method::GET, &format!("/v1/matches/bot/{bot_id}"))
             .await;
 
         assert_eq!(response.status_code(), StatusCode::UNAUTHORIZED);
@@ -1034,7 +1034,7 @@ mod tests {
         let server = TestServer::new(app).unwrap();
 
         let response = server
-            .method(Method::GET, &format!("/api/v1/stats/bot/{bot_id}"))
+            .method(Method::GET, &format!("/v1/stats/bot/{bot_id}"))
             .await;
 
         assert_eq!(response.status_code(), StatusCode::UNAUTHORIZED);
@@ -1071,7 +1071,7 @@ mod tests {
         let server = TestServer::new(app).unwrap();
 
         let response = server
-            .method(Method::GET, &format!("/api/v1/stats/user/{user_id}"))
+            .method(Method::GET, &format!("/v1/stats/user/{user_id}"))
             .await;
 
         // Note: This will be UNAUTHORIZED in the test environment
@@ -1096,7 +1096,7 @@ mod tests {
         let server = TestServer::new(app).unwrap();
 
         let response = server
-            .method(Method::GET, &format!("/api/v1/stats/user/{user_id}"))
+            .method(Method::GET, &format!("/v1/stats/user/{user_id}"))
             .await;
 
         // Note: This will be UNAUTHORIZED in the test environment
@@ -1151,7 +1151,7 @@ mod tests {
         let server = TestServer::new(app).unwrap();
 
         let response = server
-            .method(Method::GET, &format!("/api/v1/stats/bot/{bot_id}"))
+            .method(Method::GET, &format!("/v1/stats/bot/{bot_id}"))
             .await;
 
         // Note: This will be UNAUTHORIZED in the test environment
@@ -1191,7 +1191,7 @@ mod tests {
         let server = TestServer::new(app).unwrap();
 
         let response = server
-            .method(Method::GET, &format!("/api/v1/stats/bot/{bot_id}"))
+            .method(Method::GET, &format!("/v1/stats/bot/{bot_id}"))
             .await;
 
         // Note: This will be UNAUTHORIZED in the test environment

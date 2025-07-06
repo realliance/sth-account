@@ -77,7 +77,7 @@ impl From<String> for LobbyPreset {
 
 #[utoipa::path(
     post,
-    path = "/api/v1/lobbies",
+    path = "/v1/lobbies",
     tag = "Lobbies",
     request_body = CreateLobbyRequest,
     responses(
@@ -134,7 +134,7 @@ pub async fn create_lobby(
 
 #[utoipa::path(
     get,
-    path = "/api/v1/my-lobbies",
+    path = "/v1/my-lobbies",
     tag = "Lobbies",
     responses(
         (status = 200, description = "Active lobbies retrieved successfully", body = Vec<LobbyResponse>),
@@ -162,7 +162,7 @@ pub async fn get_lobbies(
 
 #[utoipa::path(
     get,
-    path = "/api/v1/all-lobbies",
+    path = "/v1/all-lobbies",
     tag = "Lobbies",
     responses(
         (status = 200, description = "All lobbies retrieved successfully", body = Vec<LobbyResponse>),
@@ -200,7 +200,7 @@ pub async fn get_all_lobbies(
 
 #[utoipa::path(
     get,
-    path = "/api/v1/lobbies/{id}",
+    path = "/v1/lobbies/{id}",
     tag = "Lobbies",
     params(
         ("id" = Uuid, Path, description = "Lobby ID")
@@ -230,7 +230,7 @@ pub async fn get_lobby(
 
 #[utoipa::path(
     patch,
-    path = "/api/v1/lobbies/{id}",
+    path = "/v1/lobbies/{id}",
     tag = "Lobbies",
     params(
         ("id" = Uuid, Path, description = "Lobby ID")
@@ -304,7 +304,7 @@ pub async fn update_lobby(
 
 #[utoipa::path(
     delete,
-    path = "/api/v1/lobbies/{id}",
+    path = "/v1/lobbies/{id}",
     tag = "Lobbies",
     params(
         ("id" = Uuid, Path, description = "Lobby ID")
@@ -418,7 +418,7 @@ mod tests {
         let server = TestServer::new(app).unwrap();
 
         let response = server
-            .method(Method::GET, &format!("/api/v1/lobbies/{lobby_id}"))
+            .method(Method::GET, &format!("/v1/lobbies/{lobby_id}"))
             .await;
 
         assert_eq!(response.status_code(), StatusCode::OK);
@@ -443,7 +443,7 @@ mod tests {
         let server = TestServer::new(app).unwrap();
 
         let response = server
-            .method(Method::GET, &format!("/api/v1/lobbies/{lobby_id}"))
+            .method(Method::GET, &format!("/v1/lobbies/{lobby_id}"))
             .await;
 
         assert_eq!(response.status_code(), StatusCode::BAD_REQUEST);
@@ -465,7 +465,7 @@ mod tests {
         });
 
         let response = server
-            .method(Method::POST, "/api/v1/lobbies")
+            .method(Method::POST, "/v1/lobbies")
             .json(&request_body)
             .await;
 
@@ -492,7 +492,7 @@ mod tests {
         });
 
         let response = server
-            .method(Method::PATCH, &format!("/api/v1/lobbies/{lobby_id}"))
+            .method(Method::PATCH, &format!("/v1/lobbies/{lobby_id}"))
             .json(&request_body)
             .await;
 
@@ -515,7 +515,7 @@ mod tests {
         let server = TestServer::new(app).unwrap();
 
         let response = server
-            .method(Method::DELETE, &format!("/api/v1/lobbies/{lobby_id}"))
+            .method(Method::DELETE, &format!("/v1/lobbies/{lobby_id}"))
             .await;
 
         assert_eq!(response.status_code(), StatusCode::UNAUTHORIZED);

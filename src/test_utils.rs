@@ -50,21 +50,24 @@ pub mod test_utils {
             .route("/auth/logout", axum::routing::post(auth_handlers::logout))
             .route("/auth/me", axum::routing::get(auth_handlers::me))
             // User routes (excluding public registration)
-            .route("/users/:id", axum::routing::get(users::get_user))
-            .route("/users/:id", axum::routing::patch(users::update_user))
-            .route("/users/:id", axum::routing::delete(users::delete_user))
+            .route("/users/{id}", axum::routing::get(users::get_user))
+            .route("/users/{id}", axum::routing::patch(users::update_user))
+            .route("/users/{id}", axum::routing::delete(users::delete_user))
             // Bot routes
             .route("/bots", axum::routing::post(bots::create_bot))
-            .route("/bots/:id", axum::routing::get(bots::get_bot))
-            .route("/bots/:id", axum::routing::patch(bots::update_bot))
-            .route("/bots/:id", axum::routing::delete(bots::delete_bot))
-            .route("/users/:id/bots", axum::routing::get(bots::get_user_bots))
+            .route("/bots/{id}", axum::routing::get(bots::get_bot))
+            .route("/bots/{id}", axum::routing::patch(bots::update_bot))
+            .route("/bots/{id}", axum::routing::delete(bots::delete_bot))
+            .route("/users/{id}/bots", axum::routing::get(bots::get_user_bots))
             // Lobby routes (excluding public lobby list)
             .route("/lobbies", axum::routing::post(lobbies::create_lobby))
             .route("/lobbies/all", axum::routing::get(lobbies::get_all_lobbies))
-            .route("/lobbies/:id", axum::routing::get(lobbies::get_lobby))
-            .route("/lobbies/:id", axum::routing::patch(lobbies::update_lobby))
-            .route("/lobbies/:id", axum::routing::delete(lobbies::delete_lobby))
+            .route("/lobbies/{id}", axum::routing::get(lobbies::get_lobby))
+            .route("/lobbies/{id}", axum::routing::patch(lobbies::update_lobby))
+            .route(
+                "/lobbies/{id}",
+                axum::routing::delete(lobbies::delete_lobby),
+            )
             // Matchmaking queue routes
             .route("/queue/join", axum::routing::post(matchmaking::join_queue))
             .route(
@@ -72,7 +75,7 @@ pub mod test_utils {
                 axum::routing::post(matchmaking::join_queue_as_bot),
             )
             .route(
-                "/queue/:id",
+                "/queue/{id}",
                 axum::routing::delete(matchmaking::leave_queue),
             )
             .route(
@@ -80,34 +83,37 @@ pub mod test_utils {
                 axum::routing::get(matchmaking::get_queue_status),
             )
             .route(
-                "/queue/lobby/:id/stats",
+                "/queue/lobby/{id}/stats",
                 axum::routing::get(matchmaking::get_lobby_queue_stats),
             )
             // Private room routes
             .route("/rooms", axum::routing::get(rooms::get_user_rooms))
             .route("/rooms", axum::routing::post(rooms::create_room))
             .route("/rooms/join", axum::routing::post(rooms::join_room))
-            .route("/rooms/:id", axum::routing::get(rooms::get_room))
-            .route("/rooms/:id/leave", axum::routing::post(rooms::leave_room))
+            .route("/rooms/{id}", axum::routing::get(rooms::get_room))
+            .route("/rooms/{id}/leave", axum::routing::post(rooms::leave_room))
             .route(
-                "/rooms/:id/invite",
+                "/rooms/{id}/invite",
                 axum::routing::post(rooms::invite_to_room),
             )
             // Match and statistics routes
             .route(
-                "/matches/user/:id",
+                "/matches/user/{id}",
                 axum::routing::get(matches::get_user_match_history),
             )
             .route(
-                "/matches/bot/:id",
+                "/matches/bot/{id}",
                 axum::routing::get(matches::get_bot_match_history),
             )
-            .route("/matches/:id", axum::routing::get(matches::get_match))
+            .route("/matches/{id}", axum::routing::get(matches::get_match))
             .route(
-                "/stats/user/:id",
+                "/stats/user/{id}",
                 axum::routing::get(matches::get_user_stats),
             )
-            .route("/stats/bot/:id", axum::routing::get(matches::get_bot_stats))
+            .route(
+                "/stats/bot/{id}",
+                axum::routing::get(matches::get_bot_stats),
+            )
             // Friend system routes
             .route("/friends", axum::routing::get(friends::get_friends))
             .route(
@@ -119,11 +125,11 @@ pub mod test_utils {
                 axum::routing::get(friends::get_pending_friend_requests),
             )
             .route(
-                "/friends/requests/:id",
+                "/friends/requests/{id}",
                 axum::routing::patch(friends::respond_to_friend_request),
             )
             .route(
-                "/friends/:id",
+                "/friends/{id}",
                 axum::routing::delete(friends::remove_friend),
             )
             // Notification routes
@@ -144,7 +150,7 @@ pub mod test_utils {
                 axum::routing::get(notifications::get_notification_summary),
             )
             .route(
-                "/notifications/:id",
+                "/notifications/{id}",
                 axum::routing::delete(notifications::delete_notification),
             )
             // Data export routes
@@ -154,21 +160,21 @@ pub mod test_utils {
             )
             .route("/exports", axum::routing::get(exports::get_export_requests))
             .route(
-                "/exports/:id/download",
+                "/exports/{id}/download",
                 axum::routing::get(exports::download_export),
             )
             .route(
-                "/exports/:id/cancel",
+                "/exports/{id}/cancel",
                 axum::routing::delete(exports::cancel_export_request),
             )
             // Admin routes
             .route("/admin/reports", axum::routing::get(admin::get_reports))
             .route(
-                "/admin/reports/:id",
+                "/admin/reports/{id}",
                 axum::routing::patch(admin::update_report),
             )
             .route(
-                "/admin/users/:id/moderate",
+                "/admin/users/{id}/moderate",
                 axum::routing::post(admin::moderate_user),
             )
             .route(
@@ -188,7 +194,7 @@ pub mod test_utils {
                 axum::routing::post(notifications::create_notification),
             )
             .route(
-                "/admin/exports/:id/complete",
+                "/admin/exports/{id}/complete",
                 axum::routing::post(exports::complete_export),
             )
             .with_state(state.clone());
@@ -203,7 +209,7 @@ pub mod test_utils {
             .with_state(state);
 
         Router::new()
-            .nest("/api/v1", api_routes)
+            .nest("/v1", api_routes)
             .merge(public_routes)
             .layer(auth_layer)
     }

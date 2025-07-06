@@ -57,7 +57,7 @@ features = [
 tokio-test = "0.4"
 tower = { version = "0.5", features = ["util"] }
 hyper = { version = "0.14", features = ["full"] }
-axum-test = "14.0"
+axum-test = "17"
 reqwest = { version = "0.12", features = ["json", "cookies"] }
 reqwest_cookie_store = "0.8"
 tempfile = "3.0"

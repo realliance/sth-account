@@ -33,7 +33,7 @@ pub struct LoginResponse {
 
 #[utoipa::path(
     post,
-    path = "/api/v1/auth/login",
+    path = "/v1/auth/login",
     tag = "Authentication",
     request_body(content = LoginRequest, content_type = "application/x-www-form-urlencoded"),
     responses(
@@ -92,7 +92,7 @@ pub async fn login(
 
 #[utoipa::path(
     post,
-    path = "/api/v1/auth/logout",
+    path = "/v1/auth/logout",
     tag = "Authentication",
     responses(
         (status = 200, description = "Logout successful", body = LoginResponse),
@@ -132,7 +132,7 @@ pub struct UserInfo {
 
 #[utoipa::path(
     get,
-    path = "/api/v1/auth/me",
+    path = "/v1/auth/me",
     tag = "Authentication",
     responses(
         (status = 200, description = "Current user information", body = Option<UserInfo>),
@@ -305,7 +305,7 @@ mod tests {
         let server = TestServer::new(app).unwrap();
 
         let response = server
-            .method(Method::GET, &format!("/api/v1/users/{user_id}"))
+            .method(Method::GET, &format!("/v1/users/{user_id}"))
             .await;
 
         // This test will currently fail due to authentication, but that's expected
@@ -330,7 +330,7 @@ mod tests {
         let server = TestServer::new(app).unwrap();
 
         let response = server
-            .method(Method::GET, &format!("/api/v1/users/{user_id}"))
+            .method(Method::GET, &format!("/v1/users/{user_id}"))
             .await;
 
         assert_eq!(response.status_code(), StatusCode::UNAUTHORIZED);
@@ -371,7 +371,7 @@ mod tests {
         });
 
         let response = server
-            .method(Method::PATCH, &format!("/api/v1/users/{user_id}"))
+            .method(Method::PATCH, &format!("/v1/users/{user_id}"))
             .json(&request_body)
             .await;
 
@@ -403,7 +403,7 @@ mod tests {
         let server = TestServer::new(app).unwrap();
 
         let response = server
-            .method(Method::DELETE, &format!("/api/v1/users/{user_id}"))
+            .method(Method::DELETE, &format!("/v1/users/{user_id}"))
             .await;
 
         assert_eq!(response.status_code(), StatusCode::UNAUTHORIZED);

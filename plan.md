@@ -1,11 +1,11 @@
 help me develop a plan for implementing a DB-backed REST and queue worker backend for a user account system for a game matchmaking website. This is for a riichi mahjong game website that is focused on both player v. player matches as well as the development and play of bots against both humans and other bots. To NOT start writing code, only work on a markdown plan file.
 
 The goal is this service handles migrations, RESTful serving, as well as a mode of operation for operating on queue messages meant to be consumed for database manipulation from other migration services. Therefore, I am imagining being able to start this service in a few different modes:
+
 - Migration: Perform a migration
 - Service: Attempt to start up (or wait for migrations to be complete) and then serve RESTful requests
 - Worker: Consume incoming queue messages and perform database operations based on those messages
 - Jobs: Run scheduled maintenance and cleanup jobs (designed for Kubernetes CronJobs)
-
 
 # YOU ARE RUNNING IN A NIXOS ENVIRONMENT
 
@@ -16,7 +16,7 @@ use `nix develop --command bash -c "<your command here>"`
 # Layout of this project
 
 - migration crate: where you will write SeaORM based migrations for the database entities
-- entity crate: where you will generate entities for the database using SeaORM CLI operations. 
+- entity crate: where you will generate entities for the database using SeaORM CLI operations.
 - src: the source code for the service.
 
 # User Security in mind
@@ -36,39 +36,39 @@ Right now I have the following entities in mind to design:
 1. Username - Alphanumeric, minimum of three characters
 2. Country - Country Code, but I want to extend it by also supporting those for pride flags. Base it off of the iso3166 alpha 3, use this crate https://docs.rs/country-code/0.3.0/country_code/iso3166_1/alpha_3/index.html
 
-to extend it, come up with additional codes that can be checked for pride flags (pick some sort of first character prefix, something not alpha based so it'll never collide, maybe an _, and then use the two letters for the rest)
+to extend it, come up with additional codes that can be checked for pride flags (pick some sort of first character prefix, something not alpha based so it'll never collide, maybe an \_, and then use the two letters for the rest)
 
 3. FavoriteTile - A favorite mahjong tile. Make this a string and stick to the following template
-<suit><number>
-Suit can be Sou, Pin, Man, Honor
-Number is a number between 1 and 9
+   <suit><number>
+   Suit can be Sou, Pin, Man, Honor
+   Number is a number between 1 and 9
 
 4. Pronouns - String
 
-4. MatchMakingRank - The player's MMR, which is a representation of their current personal performance score.
+5. MatchMakingRank - The player's MMR, which is a representation of their current personal performance score.
 
-5. Password - argon2 based password hash and salt
+6. Password - argon2 based password hash and salt
 
-6. CreatedAt - Timestamp of when the account was created
+7. CreatedAt - Timestamp of when the account was created
 
-7. Passkey - If the user has two-factor webauthn enabled, the passkey credential.
+8. Passkey - If the user has two-factor webauthn enabled, the passkey credential.
 
-8. Role - The role of the user on the site. Can be Disabled, Active, Moderator, or Admin.
+9. Role - The role of the user on the site. Can be Disabled, Active, Moderator, or Admin.
 
-9. Email - Optional, but asked in case moderators or admins need to contact you about anything.
+10. Email - Optional, but asked in case moderators or admins need to contact you about anything.
 
-10. LastActiveAt - Timestamp of last activity
+11. LastActiveAt - Timestamp of last activity
 
-11. AccountStatus - Enum: Active, Suspended, Banned (separate from Role)
+12. AccountStatus - Enum: Active, Suspended, Banned (separate from Role)
 
-12. Settings - JSON blob for user preferences (theme, notifications, etc.)
+13. Settings - JSON blob for user preferences (theme, notifications, etc.)
 
 ## Bot
 
 Bots are owned by a player and are able to play mahjong on their own.
 
 0. Id - Uuid of the bot.
-1. Name - Name of the bot (should be alphanumeric, no spaces). 
+1. Name - Name of the bot (should be alphanumeric, no spaces).
 2. OwnerId - The uuid of the owner.
 3. SourceCode - A URL to the source code for this bot (optional)
 4. MatchMakingRank - The bot's MMR, which is a representation oftheir current performance score.
@@ -116,17 +116,17 @@ A table of the available lobbies to queue into. For now, lobby types are going t
 
 ## Report Table
 
-A table of potential violations that moderators and admins need to investigate. 
+A table of potential violations that moderators and admins need to investigate.
 
 0. Report Id - Uuid of the report
 1. Author Id - The player that submitted the report
 2. AccusedIds - CSV of the uuids this is against. Prepended with h/ or b/ to represent if against a bot or human.
 3. Match Id - The uuid of the match this is related to (optional).
 4. Offense type - Enum of some presents
-  OffensiveName
-  CheatingOrCoersion
-  ToxicBehaviour
-  Other
+   OffensiveName
+   CheatingOrCoersion
+   ToxicBehaviour
+   Other
 5. Description - Optional Report Description
 6. Status - Enum: Active, Dismissed, ActionTaken
 7. ReportWriteUp - Concluding write up
@@ -172,9 +172,9 @@ Detailed statistics separate from the core User table.
 4. Third Place - Count of third place finishes
 5. Fourth Place - Count of fourth place finishes
 6. Average Score - Average final score across all games
-8. Peak MMR - Highest MMR achieved
-9. Current Streak - Current win/loss streak
-10. Last Game At - Timestamp of last completed game
+7. Peak MMR - Highest MMR achieved
+8. Current Streak - Current win/loss streak
+9. Last Game At - Timestamp of last completed game
 
 ## Friendship
 
@@ -205,7 +205,7 @@ System messages and notifications for users.
 
 Track significant user actions for security and moderation.
 
-0. Audit Id - Uuid of the audit entry  
+0. Audit Id - Uuid of the audit entry
 1. User Id - Uuid of the user who performed the action
 2. Action Type - Enum: Login, Logout, PasswordChange, RoleChange, Suspension, BotCreated, BotDeleted, ProfileUpdate
 3. Details - JSON blob with action-specific details
@@ -297,6 +297,7 @@ Track user data export requests for GDPR compliance.
 # Design Requirements
 
 ## Rate Limiting
+
 - The API must serve X-Rate-Limit headers for all endpoints
 - Rate limiting enforcement handled at ingress level, not application level
 - Hard denial of requests exceeding limits
@@ -304,24 +305,29 @@ Track user data export requests for GDPR compliance.
 ## Data Integrity & Deletion Policies
 
 ### Account Deletion
+
 - When users delete accounts: anonymize all related data, disable login
 - Preserve match history and statistics with anonymized user references
 - Replace username with "Anonymous User {random_id}" in all records
 
 ### Soft Deletes
+
 - Implement soft deletes for critical entities: Users, Matches, Reports, Audit Logs
 - Use `deleted_at` timestamp field (NULL = active, timestamp = soft deleted)
 - Soft deleted records excluded from normal queries but preserved for integrity
 
 ### Data Retention (GDPR Compliance)
+
 - Audit logs: 60 days retention
-- Expired sessions: 30 days retention  
+- Expired sessions: 30 days retention
 - Completed export files: 7 days retention
 - Dismissed reports: 90 days retention
 - User anonymization is permanent (no recovery)
 
 ## Database Indexes
+
 Plan indexes for frequently queried fields:
+
 - Users: username, email, role, account_status, last_active_at
 - Bots: owner_id, live, mmr
 - Matches: lobby_id, started_at, participant IDs
@@ -336,7 +342,7 @@ The Jobs service mode is designed to run scheduled maintenance and cleanup tasks
 ```bash
 # Example job invocations
 ./sth-account jobs cleanup-audit-logs
-./sth-account jobs cleanup-sessions  
+./sth-account jobs cleanup-sessions
 ./sth-account jobs cleanup-export-files
 ./sth-account jobs cleanup-reports
 ./sth-account jobs update-statistics
@@ -345,6 +351,7 @@ The Jobs service mode is designed to run scheduled maintenance and cleanup tasks
 ### Job Types
 
 **Data Retention Jobs:**
+
 - `cleanup-audit-logs`: Delete audit logs older than 60 days
 - `cleanup-sessions`: Delete expired sessions older than 30 days
 - `cleanup-export-files`: Delete export files older than 7 days
@@ -352,12 +359,14 @@ The Jobs service mode is designed to run scheduled maintenance and cleanup tasks
 - `cleanup-notifications`: Delete read notifications older than 30 days
 
 **Maintenance Jobs:**
+
 - `update-statistics`: Recalculate user and bot statistics (daily)
 - `cleanup-stale-queues`: Remove abandoned queue entries (hourly)
 - `cleanup-expired-rooms`: Close expired private rooms (hourly)
 - `heartbeat-check`: Mark bots as offline if no heartbeat in 10 minutes (every 5 minutes)
 
 **Analytics Jobs:**
+
 - `generate-daily-stats`: Generate daily platform statistics
 - `mmr-recalculation`: Periodic MMR adjustments if algorithm changes
 
@@ -381,7 +390,7 @@ spec:
             args: ["jobs", "cleanup-sessions"]
           restartPolicy: OnFailure
 
-# Check bot heartbeats every 5 minutes  
+# Check bot heartbeats every 5 minutes
 apiVersion: batch/v1
 kind: CronJob
 metadata:
@@ -400,6 +409,7 @@ spec:
 ```
 
 ### Job Execution Features
+
 - Each job logs execution start/completion with timestamps
 - Failed jobs should log errors and exit with non-zero status
 - Jobs are idempotent and safe to run multiple times
@@ -409,6 +419,7 @@ spec:
 # Technology Stack
 
 ## Core Dependencies
+
 - **SeaORM**: Database operations, migrations, and entity management
 - **amqp-rs**: RabbitMQ integration for Worker mode message processing
 - **axum**: Web framework for REST API endpoints
@@ -417,6 +428,7 @@ spec:
 - **tracing + tracing-subscriber**: Structured logging and observability
 
 ## Authentication & Security
+
 - **axum-login**: Session-based authentication middleware
 - **tower-sessions**: Session management and storage
 - **jsonwebtoken**: JWT token handling (if needed)
@@ -424,17 +436,20 @@ spec:
 - **uuid**: UUID generation for all entity IDs
 
 ## API Design
-- **Versioning Strategy**: Route prefixes (`/api/v1/`, `/api/v2/`) with addition-only evolution
+
+- **Versioning Strategy**: Route prefixes (`/v1/`, `/v2/`) with addition-only evolution
 - **Response Format**: JSON with consistent error handling patterns
 - **Headers**: X-Rate-Limit headers required on all endpoints
 - **Health Checks**: `/health` and `/ready` endpoints for Kubernetes probes
 
 ## Development Environment
+
 - **Nix**: Development shell with Rust toolchain and dependencies
 - **Cargo Workspace**: Root crate + entity + migration modules
 - **Rust Edition**: 2024 with toolchain version 1.88
 
 ## Deployment Architecture
+
 - **Kubernetes**: CronJobs for scheduled tasks, Deployments for services
 - **Container**: Single binary with multiple service modes
 - **Configuration**: Environment variables for different environments
@@ -443,30 +458,35 @@ spec:
 # Implementation Priority
 
 ## Phase 1: Foundation
+
 1. Set up SeaORM entities from database design
 2. Create service mode CLI structure (Migration, Service, Worker, Jobs)
 3. Implement database migrations
 4. Basic health check endpoints
 
 ## Phase 2: Core API
+
 1. User authentication and session management
 2. Basic CRUD operations for Users and Bots
 3. Rate limiting headers implementation
 4. Error handling patterns
 
 ## Phase 3: Game Features
+
 1. Matchmaking queue system
 2. Private room creation and management
 3. Match history tracking
 4. Statistics calculation
 
 ## Phase 4: Social & Moderation
+
 1. Friend system and notifications
 2. Reporting system
 3. Admin/moderator tools
 4. Data export functionality
 
 ## Phase 5: Maintenance
+
 1. All scheduled jobs implementation
 2. GDPR compliance features
 3. Audit logging

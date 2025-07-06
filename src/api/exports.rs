@@ -149,7 +149,7 @@ pub struct ExportMetadata {
 
 #[utoipa::path(
     post,
-    path = "/api/v1/exports",
+    path = "/v1/exports",
     tag = "Exports",
     request_body = RequestDataExportRequest,
     responses(
@@ -216,7 +216,7 @@ pub async fn request_data_export(
 
 #[utoipa::path(
     get,
-    path = "/api/v1/exports",
+    path = "/v1/exports",
     tag = "Exports",
     params(
         GetExportsQuery
@@ -277,7 +277,7 @@ pub async fn get_export_requests(
 
 #[utoipa::path(
     get,
-    path = "/api/v1/exports/{id}/download",
+    path = "/v1/exports/{id}/download",
     tag = "Exports",
     params(
         ("id" = Uuid, Path, description = "Export ID")
@@ -337,7 +337,7 @@ pub async fn download_export(
 
 #[utoipa::path(
     delete,
-    path = "/api/v1/exports/{id}/cancel",
+    path = "/v1/exports/{id}/cancel",
     tag = "Exports",
     params(
         ("id" = Uuid, Path, description = "Export ID")
@@ -577,7 +577,7 @@ async fn generate_user_data_export(
 
 #[utoipa::path(
     post,
-    path = "/api/v1/admin/exports/{id}/complete",
+    path = "/v1/admin/exports/{id}/complete",
     tag = "Admin",
     params(
         ("id" = Uuid, Path, description = "Export ID")
@@ -644,7 +644,7 @@ mod tests {
         let app = create_test_app(Arc::new(db));
         let server = TestServer::new(app).unwrap();
 
-        let response = server.method(Method::GET, "/api/v1/exports").await;
+        let response = server.method(Method::GET, "/v1/exports").await;
         assert!(
             response.status_code() == StatusCode::UNAUTHORIZED
                 || response.status_code() == StatusCode::FORBIDDEN,
@@ -659,7 +659,7 @@ mod tests {
         let server = TestServer::new(app).unwrap();
 
         let response = server
-            .method(Method::POST, "/api/v1/exports")
+            .method(Method::POST, "/v1/exports")
             .json(&json!({"export_type": "UserData"}))
             .await;
         assert!(
@@ -682,7 +682,7 @@ mod tests {
         let server = TestServer::new(app).unwrap();
 
         let response = server
-            .method(Method::POST, "/api/v1/exports")
+            .method(Method::POST, "/v1/exports")
             .json(&json!({"export_type": "InvalidType"}))
             .await;
 
@@ -710,7 +710,7 @@ mod tests {
             let server = TestServer::new(app).unwrap();
 
             let response = server
-                .method(Method::POST, "/api/v1/exports")
+                .method(Method::POST, "/v1/exports")
                 .json(&json!({"export_type": export_type}))
                 .await;
 

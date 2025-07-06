@@ -69,7 +69,7 @@ pub struct UpdateUserRequest {
 
 #[utoipa::path(
     post,
-    path = "/api/v1/users",
+    path = "/v1/users",
     tag = "Users",
     request_body = CreateUserRequest,
     responses(
@@ -123,7 +123,7 @@ pub async fn create_user(
 
 #[utoipa::path(
     get,
-    path = "/api/v1/users/{id}",
+    path = "/v1/users/{id}",
     tag = "Users",
     params(
         ("id" = Uuid, Path, description = "User ID")
@@ -164,7 +164,7 @@ pub async fn get_user(
 
 #[utoipa::path(
     patch,
-    path = "/api/v1/users/{id}",
+    path = "/v1/users/{id}",
     tag = "Users",
     params(
         ("id" = Uuid, Path, description = "User ID")
@@ -224,7 +224,7 @@ pub async fn update_user(
 
 #[utoipa::path(
     delete,
-    path = "/api/v1/users/{id}",
+    path = "/v1/users/{id}",
     tag = "Users",
     params(
         ("id" = Uuid, Path, description = "User ID")

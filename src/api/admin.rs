@@ -129,7 +129,7 @@ pub struct SystemConfigResponse {
 
 #[utoipa::path(
     get,
-    path = "/api/v1/admin/reports",
+    path = "/v1/admin/reports",
     tag = "Admin",
     params(
         GetReportsQuery
@@ -231,7 +231,7 @@ pub async fn get_reports(
 
 #[utoipa::path(
     patch,
-    path = "/api/v1/admin/reports/{id}",
+    path = "/v1/admin/reports/{id}",
     tag = "Admin",
     params(
         ("id" = Uuid, Path, description = "Report ID")
@@ -340,7 +340,7 @@ pub async fn update_report(
 
 #[utoipa::path(
     post,
-    path = "/api/v1/admin/users/{id}/moderate",
+    path = "/v1/admin/users/{id}/moderate",
     tag = "Admin",
     params(
         ("id" = Uuid, Path, description = "User ID to moderate")
@@ -463,7 +463,7 @@ pub async fn moderate_user(
 
 #[utoipa::path(
     get,
-    path = "/api/v1/admin/config",
+    path = "/v1/admin/config",
     tag = "Admin",
     responses(
         (status = 200, description = "List of system configuration settings", body = Vec<SystemConfigResponse>),
@@ -523,7 +523,7 @@ pub async fn get_system_config(
 
 #[utoipa::path(
     post,
-    path = "/api/v1/admin/config",
+    path = "/v1/admin/config",
     tag = "Admin",
     request_body = SystemConfigRequest,
     responses(
@@ -622,7 +622,7 @@ pub async fn update_system_config(
 
 #[utoipa::path(
     get,
-    path = "/api/v1/admin/audit-logs",
+    path = "/v1/admin/audit-logs",
     tag = "Admin",
     params(
         GetReportsQuery
@@ -740,9 +740,9 @@ mod tests {
         let server = TestServer::new(app).unwrap();
 
         let endpoints = [
-            ("/api/v1/admin/reports", Method::GET),
-            ("/api/v1/admin/config", Method::GET),
-            ("/api/v1/admin/audit-logs", Method::GET),
+            ("/v1/admin/reports", Method::GET),
+            ("/v1/admin/config", Method::GET),
+            ("/v1/admin/audit-logs", Method::GET),
         ];
 
         for (endpoint, method) in &endpoints {
@@ -766,7 +766,7 @@ mod tests {
         let server = TestServer::new(app).unwrap();
 
         let response = server
-            .method(Method::POST, "/api/v1/admin/notifications")
+            .method(Method::POST, "/v1/admin/notifications")
             .json(&json!({
                 "user_id": Uuid::new_v4(),
                 "type": "SystemMessage",
@@ -793,7 +793,7 @@ mod tests {
         let app = create_test_app(Arc::new(db));
         let server = TestServer::new(app).unwrap();
 
-        let response = server.method(Method::GET, "/api/v1/admin/config").await;
+        let response = server.method(Method::GET, "/v1/admin/config").await;
 
         assert!(
             response.status_code() == StatusCode::FORBIDDEN
@@ -814,7 +814,7 @@ mod tests {
         let app = create_test_app(Arc::new(db));
         let server = TestServer::new(app).unwrap();
 
-        let response = server.method(Method::GET, "/api/v1/admin/reports").await;
+        let response = server.method(Method::GET, "/v1/admin/reports").await;
 
         assert_ne!(
             response.status_code(),
@@ -835,7 +835,7 @@ mod tests {
         let app = create_test_app(Arc::new(db));
         let server = TestServer::new(app).unwrap();
 
-        let response = server.method(Method::GET, "/api/v1/admin/config").await;
+        let response = server.method(Method::GET, "/v1/admin/config").await;
 
         assert_ne!(
             response.status_code(),

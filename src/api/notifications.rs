@@ -86,7 +86,7 @@ pub struct CreateNotificationRequest {
 
 #[utoipa::path(
     get,
-    path = "/api/v1/notifications",
+    path = "/v1/notifications",
     tag = "Notifications",
     params(
         GetNotificationsQuery
@@ -165,7 +165,7 @@ pub async fn get_notifications(
 
 #[utoipa::path(
     post,
-    path = "/api/v1/notifications/mark-read",
+    path = "/v1/notifications/mark-read",
     tag = "Notifications",
     request_body = MarkAsReadRequest,
     responses(
@@ -219,7 +219,7 @@ pub async fn mark_notifications_as_read(
 
 #[utoipa::path(
     post,
-    path = "/api/v1/notifications/mark-all-read",
+    path = "/v1/notifications/mark-all-read",
     tag = "Notifications",
     responses(
         (status = 200, description = "All notifications marked as read", body = serde_json::Value),
@@ -261,7 +261,7 @@ pub async fn mark_all_notifications_as_read(
 
 #[utoipa::path(
     delete,
-    path = "/api/v1/notifications/{id}",
+    path = "/v1/notifications/{id}",
     tag = "Notifications",
     params(
         ("id" = Uuid, Path, description = "Notification ID")
@@ -306,7 +306,7 @@ pub async fn delete_notification(
 
 #[utoipa::path(
     get,
-    path = "/api/v1/notifications/summary",
+    path = "/v1/notifications/summary",
     tag = "Notifications",
     responses(
         (status = 200, description = "Notification summary", body = serde_json::Value),
@@ -376,7 +376,7 @@ pub async fn get_notification_summary(
 
 #[utoipa::path(
     post,
-    path = "/api/v1/admin/notifications",
+    path = "/v1/admin/notifications",
     tag = "Admin",
     request_body = CreateNotificationRequest,
     responses(
@@ -442,8 +442,8 @@ mod tests {
         let server = TestServer::new(app).unwrap();
 
         let endpoints = [
-            ("/api/v1/notifications", Method::GET),
-            ("/api/v1/notifications/summary", Method::GET),
+            ("/v1/notifications", Method::GET),
+            ("/v1/notifications/summary", Method::GET),
         ];
 
         for (endpoint, method) in &endpoints {
@@ -473,7 +473,7 @@ mod tests {
         let server = TestServer::new(app).unwrap();
 
         let response = server
-            .method(Method::POST, "/api/v1/notifications/mark-read")
+            .method(Method::POST, "/v1/notifications/mark-read")
             .json(&json!({"notification_ids": ["not-a-uuid"]}))
             .await;
 
@@ -513,7 +513,7 @@ mod tests {
         let server = TestServer::new(app).unwrap();
 
         let response = server
-            .method(Method::GET, "/api/v1/notifications?page=1&per_page=10")
+            .method(Method::GET, "/v1/notifications?page=1&per_page=10")
             .await;
 
         assert!(
@@ -554,7 +554,7 @@ mod tests {
         let response = server
             .method(
                 Method::GET,
-                "/api/v1/notifications?notification_type=FriendRequest",
+                "/v1/notifications?notification_type=FriendRequest",
             )
             .await;
 
@@ -607,7 +607,7 @@ mod tests {
         let server = TestServer::new(app).unwrap();
 
         let response = server
-            .method(Method::POST, "/api/v1/notifications/mark-read")
+            .method(Method::POST, "/v1/notifications/mark-read")
             .json(&json!({"notification_ids": [notification_id]}))
             .await;
 
@@ -628,7 +628,7 @@ mod tests {
         let server = TestServer::new(app).unwrap();
 
         let response = server
-            .method(Method::POST, "/api/v1/notifications/mark-all-read")
+            .method(Method::POST, "/v1/notifications/mark-all-read")
             .await;
 
         assert_eq!(response.status_code(), StatusCode::UNAUTHORIZED);
@@ -664,7 +664,7 @@ mod tests {
         let response = server
             .method(
                 Method::DELETE,
-                &format!("/api/v1/notifications/{notification_id}"),
+                &format!("/v1/notifications/{notification_id}"),
             )
             .await;
 
@@ -701,7 +701,7 @@ mod tests {
         let response = server
             .method(
                 Method::DELETE,
-                &format!("/api/v1/notifications/{notification_id}"),
+                &format!("/v1/notifications/{notification_id}"),
             )
             .await;
 
@@ -755,7 +755,7 @@ mod tests {
         let server = TestServer::new(app).unwrap();
 
         let response = server
-            .method(Method::GET, "/api/v1/notifications/summary")
+            .method(Method::GET, "/v1/notifications/summary")
             .await;
 
         assert_eq!(response.status_code(), StatusCode::UNAUTHORIZED);
@@ -789,7 +789,7 @@ mod tests {
         let server = TestServer::new(app).unwrap();
 
         let response = server
-            .method(Method::POST, "/api/v1/admin/notifications")
+            .method(Method::POST, "/v1/admin/notifications")
             .json(&json!({
                 "user_id": target_user_id,
                 "type": "SystemMessage",
@@ -815,7 +815,7 @@ mod tests {
         let server = TestServer::new(app).unwrap();
 
         let response = server
-            .method(Method::POST, "/api/v1/admin/notifications")
+            .method(Method::POST, "/v1/admin/notifications")
             .json(&json!({
                 "user_id": target_user_id,
                 "type": "SystemMessage",
