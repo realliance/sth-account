@@ -6,6 +6,7 @@ use axum::{
 use chrono::Utc;
 use sea_orm::{ActiveModelTrait, ColumnTrait, EntityTrait, QueryFilter, Set};
 use serde::{Deserialize, Serialize};
+use utoipa::ToSchema;
 use uuid::Uuid;
 
 use crate::{
@@ -15,7 +16,7 @@ use crate::{
 };
 use entity::user;
 
-#[derive(Debug, Serialize)]
+#[derive(Debug, Serialize, ToSchema)]
 pub struct UserResponse {
     pub id: Uuid,
     pub username: String,
@@ -48,7 +49,7 @@ impl From<user::Model> for UserResponse {
     }
 }
 
-#[derive(Debug, Deserialize)]
+#[derive(Debug, Deserialize, ToSchema)]
 pub struct CreateUserRequest {
     pub username: String,
     pub password: String,
@@ -58,7 +59,7 @@ pub struct CreateUserRequest {
     pub email: Option<String>,
 }
 
-#[derive(Debug, Deserialize)]
+#[derive(Debug, Deserialize, ToSchema)]
 pub struct UpdateUserRequest {
     pub country: Option<String>,
     pub favorite_tile: Option<String>,
@@ -66,6 +67,17 @@ pub struct UpdateUserRequest {
     pub email: Option<String>,
 }
 
+#[utoipa::path(
+    post,
+    path = "/api/v1/users",
+    tag = "Users",
+    request_body = CreateUserRequest,
+    responses(
+        (status = 201, description = "User created successfully", body = UserResponse),
+        (status = 400, description = "Username already exists"),
+        (status = 500, description = "Internal server error")
+    )
+)]
 pub async fn create_user(
     State(state): State<AppState>,
     mut headers: HeaderMap,
@@ -109,6 +121,20 @@ pub async fn create_user(
     Ok((StatusCode::CREATED, headers, Json(user_response)))
 }
 
+#[utoipa::path(
+    get,
+    path = "/api/v1/users/{id}",
+    tag = "Users",
+    params(
+        ("id" = Uuid, Path, description = "User ID")
+    ),
+    responses(
+        (status = 200, description = "User found", body = UserResponse),
+        (status = 401, description = "Authentication required"),
+        (status = 403, description = "Access denied"),
+        (status = 404, description = "User not found")
+    )
+)]
 pub async fn get_user(
     State(state): State<AppState>,
     auth_session: AuthSession,
@@ -136,6 +162,21 @@ pub async fn get_user(
     Ok((StatusCode::OK, headers, Json(user_response)))
 }
 
+#[utoipa::path(
+    patch,
+    path = "/api/v1/users/{id}",
+    tag = "Users",
+    params(
+        ("id" = Uuid, Path, description = "User ID")
+    ),
+    request_body = UpdateUserRequest,
+    responses(
+        (status = 200, description = "User updated successfully", body = UserResponse),
+        (status = 401, description = "Authentication required"),
+        (status = 403, description = "Access denied"),
+        (status = 404, description = "User not found")
+    )
+)]
 pub async fn update_user(
     State(state): State<AppState>,
     auth_session: AuthSession,
@@ -181,6 +222,20 @@ pub async fn update_user(
     Ok((StatusCode::OK, headers, Json(user_response)))
 }
 
+#[utoipa::path(
+    delete,
+    path = "/api/v1/users/{id}",
+    tag = "Users",
+    params(
+        ("id" = Uuid, Path, description = "User ID")
+    ),
+    responses(
+        (status = 200, description = "User deleted successfully"),
+        (status = 401, description = "Authentication required"),
+        (status = 403, description = "Access denied"),
+        (status = 404, description = "User not found")
+    )
+)]
 pub async fn delete_user(
     State(state): State<AppState>,
     auth_session: AuthSession,

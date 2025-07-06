@@ -6,6 +6,7 @@ use axum::{
 use chrono::Utc;
 use sea_orm::{ActiveModelTrait, ColumnTrait, EntityTrait, QueryFilter, Set};
 use serde::{Deserialize, Serialize};
+use utoipa::ToSchema;
 use uuid::Uuid;
 
 use crate::{
@@ -15,7 +16,7 @@ use crate::{
 };
 use entity::bot;
 
-#[derive(Debug, Serialize)]
+#[derive(Debug, Serialize, ToSchema)]
 pub struct BotResponse {
     pub id: Uuid,
     pub name: String,
@@ -48,7 +49,7 @@ impl From<bot::Model> for BotResponse {
     }
 }
 
-#[derive(Debug, Deserialize)]
+#[derive(Debug, Deserialize, ToSchema)]
 pub struct CreateBotRequest {
     pub name: String,
     pub source_code: Option<String>,
@@ -57,7 +58,7 @@ pub struct CreateBotRequest {
     pub version: Option<String>,
 }
 
-#[derive(Debug, Deserialize)]
+#[derive(Debug, Deserialize, ToSchema)]
 pub struct UpdateBotRequest {
     pub name: Option<String>,
     pub source_code: Option<String>,
@@ -67,6 +68,18 @@ pub struct UpdateBotRequest {
     pub live: Option<bool>,
 }
 
+#[utoipa::path(
+    post,
+    path = "/api/v1/bots",
+    tag = "Bots",
+    request_body = CreateBotRequest,
+    responses(
+        (status = 201, description = "Bot created successfully", body = BotResponse),
+        (status = 400, description = "Bot name already exists"),
+        (status = 401, description = "Authentication required"),
+        (status = 500, description = "Internal server error")
+    )
+)]
 pub async fn create_bot(
     State(state): State<AppState>,
     auth_session: AuthSession,
@@ -115,6 +128,18 @@ pub async fn create_bot(
     Ok((StatusCode::CREATED, headers, Json(bot_response)))
 }
 
+#[utoipa::path(
+    get,
+    path = "/api/v1/bots/{id}",
+    tag = "Bots",
+    params(
+        ("id" = Uuid, Path, description = "Bot ID")
+    ),
+    responses(
+        (status = 200, description = "Bot found", body = BotResponse),
+        (status = 404, description = "Bot not found")
+    )
+)]
 pub async fn get_bot(
     State(state): State<AppState>,
     mut headers: HeaderMap,
@@ -131,6 +156,21 @@ pub async fn get_bot(
     Ok((StatusCode::OK, headers, Json(bot_response)))
 }
 
+#[utoipa::path(
+    patch,
+    path = "/api/v1/bots/{id}",
+    tag = "Bots",
+    params(
+        ("id" = Uuid, Path, description = "Bot ID")
+    ),
+    request_body = UpdateBotRequest,
+    responses(
+        (status = 200, description = "Bot updated successfully", body = BotResponse),
+        (status = 401, description = "Authentication required"),
+        (status = 403, description = "Access denied"),
+        (status = 404, description = "Bot not found")
+    )
+)]
 pub async fn update_bot(
     State(state): State<AppState>,
     auth_session: AuthSession,
@@ -194,6 +234,20 @@ pub async fn update_bot(
     Ok((StatusCode::OK, headers, Json(bot_response)))
 }
 
+#[utoipa::path(
+    delete,
+    path = "/api/v1/bots/{id}",
+    tag = "Bots",
+    params(
+        ("id" = Uuid, Path, description = "Bot ID")
+    ),
+    responses(
+        (status = 200, description = "Bot deleted successfully"),
+        (status = 401, description = "Authentication required"),
+        (status = 403, description = "Access denied"),
+        (status = 404, description = "Bot not found")
+    )
+)]
 pub async fn delete_bot(
     State(state): State<AppState>,
     auth_session: AuthSession,
@@ -227,6 +281,19 @@ pub async fn delete_bot(
     ))
 }
 
+#[utoipa::path(
+    get,
+    path = "/api/v1/users/{id}/bots",
+    tag = "Bots",
+    params(
+        ("id" = Uuid, Path, description = "User ID")
+    ),
+    responses(
+        (status = 200, description = "User's bots retrieved successfully", body = Vec<BotResponse>),
+        (status = 401, description = "Authentication required"),
+        (status = 403, description = "Access denied")
+    )
+)]
 pub async fn get_user_bots(
     State(state): State<AppState>,
     auth_session: AuthSession,

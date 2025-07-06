@@ -221,7 +221,7 @@ pub async fn update_report(
     auth_session: AuthSession,
     mut headers: HeaderMap,
     Path(report_id): Path<Uuid>,
-    connect_info: Option<ConnectInfo<SocketAddr>>,
+    ConnectInfo(addr): ConnectInfo<SocketAddr>,
     Json(request): Json<UpdateReportRequest>,
 ) -> Result<(StatusCode, HeaderMap, Json<ReportResponse>)> {
     add_rate_limit_headers(&mut headers);
@@ -266,7 +266,7 @@ pub async fn update_report(
             "new_status": request.status,
             "previous_status": report.status
         }))),
-        ip_address: Set(extract_ip_address(&headers, connect_info)),
+        ip_address: Set(extract_ip_address(&headers, Some(ConnectInfo(addr)))),
         moderator_id: Set(Some(current_user.id)),
         created_at: Set(Utc::now().into()),
         deleted_at: Set(None),
@@ -312,7 +312,7 @@ pub async fn moderate_user(
     auth_session: AuthSession,
     mut headers: HeaderMap,
     Path(user_id): Path<Uuid>,
-    connect_info: Option<ConnectInfo<SocketAddr>>,
+    ConnectInfo(addr): ConnectInfo<SocketAddr>,
     Json(request): Json<UserModerationRequest>,
 ) -> Result<(StatusCode, HeaderMap, Json<serde_json::Value>)> {
     add_rate_limit_headers(&mut headers);
@@ -371,7 +371,7 @@ pub async fn moderate_user(
         user_id: Set(target_user.id),
         action_type: Set(format!("UserModeration_{}", request.action)),
         details: Set(Some(action_details)),
-        ip_address: Set(extract_ip_address(&headers, connect_info)),
+        ip_address: Set(extract_ip_address(&headers, Some(ConnectInfo(addr)))),
         moderator_id: Set(Some(current_user.id)),
         created_at: Set(Utc::now().into()),
         deleted_at: Set(None),
@@ -459,7 +459,7 @@ pub async fn update_system_config(
     State(state): State<AppState>,
     auth_session: AuthSession,
     mut headers: HeaderMap,
-    connect_info: Option<ConnectInfo<SocketAddr>>,
+    ConnectInfo(addr): ConnectInfo<SocketAddr>,
     Json(request): Json<SystemConfigRequest>,
 ) -> Result<(StatusCode, HeaderMap, Json<SystemConfigResponse>)> {
     add_rate_limit_headers(&mut headers);
@@ -512,7 +512,7 @@ pub async fn update_system_config(
             "config_key": request.key,
             "config_id": config.id
         }))),
-        ip_address: Set(extract_ip_address(&headers, connect_info)),
+        ip_address: Set(extract_ip_address(&headers, Some(ConnectInfo(addr)))),
         moderator_id: Set(Some(current_user.id)),
         created_at: Set(Utc::now().into()),
         deleted_at: Set(None),

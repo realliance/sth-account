@@ -4,26 +4,43 @@ use axum::{
     response::Json,
 };
 use serde::{Deserialize, Serialize};
+use utoipa::ToSchema;
 
 use crate::{
     auth::{AuthSession, Credentials},
     error::{AppError, Result},
 };
 
-#[derive(Debug, Deserialize)]
+#[derive(Debug, Deserialize, ToSchema)]
 pub struct LoginRequest {
+    /// Username for login
     pub username: String,
+    /// Password for login
     pub password: String,
 }
 
-#[derive(Debug, Serialize)]
+#[derive(Debug, Serialize, ToSchema)]
 pub struct LoginResponse {
+    /// Whether the login was successful
     pub success: bool,
+    /// User ID if login successful
     pub user_id: Option<uuid::Uuid>,
+    /// Username if login successful
     pub username: Option<String>,
+    /// Response message
     pub message: String,
 }
 
+#[utoipa::path(
+    post,
+    path = "/api/v1/auth/login",
+    tag = "Authentication",
+    request_body(content = LoginRequest, content_type = "application/x-www-form-urlencoded"),
+    responses(
+        (status = 200, description = "Login successful", body = LoginResponse),
+        (status = 401, description = "Invalid credentials", body = LoginResponse)
+    )
+)]
 pub async fn login(
     mut auth_session: AuthSession,
     mut headers: HeaderMap,
@@ -75,6 +92,15 @@ pub async fn login(
     ))
 }
 
+#[utoipa::path(
+    post,
+    path = "/api/v1/auth/logout",
+    tag = "Authentication",
+    responses(
+        (status = 200, description = "Logout successful", body = LoginResponse),
+        (status = 500, description = "Internal server error")
+    )
+)]
 pub async fn logout(
     mut auth_session: AuthSession,
     mut headers: HeaderMap,
@@ -96,13 +122,25 @@ pub async fn logout(
     }
 }
 
-#[derive(Debug, Serialize)]
+#[derive(Debug, Serialize, ToSchema)]
 pub struct UserInfo {
+    /// User ID
     pub user_id: uuid::Uuid,
+    /// Username
     pub username: String,
+    /// User role
     pub role: String,
 }
 
+#[utoipa::path(
+    get,
+    path = "/api/v1/auth/me",
+    tag = "Authentication",
+    responses(
+        (status = 200, description = "Current user information", body = Option<UserInfo>),
+        (status = 401, description = "Not authenticated")
+    )
+)]
 pub async fn me(
     auth_session: AuthSession,
     mut headers: HeaderMap,
