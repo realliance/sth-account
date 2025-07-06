@@ -73,8 +73,7 @@ mod tests {
             assert_ne!(
                 response.status_code(),
                 StatusCode::NOT_FOUND,
-                "Endpoint {} should exist (not return 404)",
-                endpoint
+                "Endpoint {endpoint} should exist (not return 404)"
             );
         }
     }

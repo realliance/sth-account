@@ -61,11 +61,11 @@ pub enum ParticipantType {
     Bot,
 }
 
-impl ToString for ParticipantType {
-    fn to_string(&self) -> String {
+impl std::fmt::Display for ParticipantType {
+    fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
         match self {
-            ParticipantType::Human => "Human".to_string(),
-            ParticipantType::Bot => "Bot".to_string(),
+            ParticipantType::Human => write!(f, "Human"),
+            ParticipantType::Bot => write!(f, "Bot"),
         }
     }
 }
@@ -103,12 +103,12 @@ pub enum BotStatus {
     Error,
 }
 
-impl ToString for BotStatus {
-    fn to_string(&self) -> String {
+impl std::fmt::Display for BotStatus {
+    fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
         match self {
-            BotStatus::Online => "Online".to_string(),
-            BotStatus::Offline => "Offline".to_string(),
-            BotStatus::Error => "Error".to_string(),
+            BotStatus::Online => write!(f, "Online"),
+            BotStatus::Offline => write!(f, "Offline"),
+            BotStatus::Error => write!(f, "Error"),
         }
     }
 }

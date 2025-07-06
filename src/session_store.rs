@@ -1,7 +1,6 @@
 use async_trait::async_trait;
 use chrono::Utc;
 use sea_orm::{ActiveModelTrait, ColumnTrait, DatabaseConnection, EntityTrait, QueryFilter, Set};
-use serde_json;
 use std::collections::HashMap;
 use std::sync::Arc;
 use time::OffsetDateTime;
@@ -14,13 +13,54 @@ use uuid::Uuid;
 use entity::user_session;
 
 #[derive(Debug, Clone)]
+pub struct SessionContext {
+    pub user_id: Option<Uuid>,
+    pub device_info: Option<String>,
+    pub ip_address: Option<String>,
+}
+
+impl SessionContext {
+    pub fn new() -> Self {
+        Self {
+            user_id: None,
+            device_info: None,
+            ip_address: None,
+        }
+    }
+
+    pub fn with_user_id(mut self, user_id: Uuid) -> Self {
+        self.user_id = Some(user_id);
+        self
+    }
+
+    pub fn with_device_info(mut self, device_info: String) -> Self {
+        self.device_info = Some(device_info);
+        self
+    }
+
+    pub fn with_ip_address(mut self, ip_address: String) -> Self {
+        self.ip_address = Some(ip_address);
+        self
+    }
+}
+
+#[derive(Debug, Clone)]
 pub struct SeaOrmSessionStore {
     db: Arc<DatabaseConnection>,
+    context: Option<SessionContext>,
 }
 
 impl SeaOrmSessionStore {
     pub fn new(db: Arc<DatabaseConnection>) -> Self {
-        Self { db }
+        Self { 
+            db,
+            context: None,
+        }
+    }
+
+    pub fn with_context(mut self, context: SessionContext) -> Self {
+        self.context = Some(context);
+        self
     }
 }
 
@@ -44,7 +84,7 @@ impl SessionStore for SeaOrmSessionStore {
 
     async fn save(&self, session_record: &Record) -> session_store::Result<()> {
         let session_id = session_record.id.to_string();
-        let _data = serde_json::to_string(&session_record.data)
+        let data_json = serde_json::to_string(&session_record.data)
             .map_err(|e| session_store::Error::Encode(e.to_string()))?;
 
         // Convert time::OffsetDateTime to chrono::DateTime
@@ -68,25 +108,36 @@ impl SessionStore for SeaOrmSessionStore {
             session_update.expires_at = Set(expiry_chrono);
             session_update.last_active_at = Set(Some(Utc::now().into()));
             session_update.status = Set("Active".to_string());
+            session_update.data = Set(Some(data_json));
             session_update
                 .update(self.db.as_ref())
                 .await
                 .map_err(|e| session_store::Error::Backend(e.to_string()))?;
         } else {
-            // Create new session - we'll need a placeholder user_id since sessions aren't tied to users yet
-            // In a real implementation, you'd extract the user_id from the session data
-            let placeholder_user_id = Uuid::new_v4(); // This should be extracted from session data
+            // Extract user_id from session data, then from context, fallback to placeholder if not found
+            let user_id = session_record.data.get("user_id")
+                .and_then(|v| v.as_str())
+                .and_then(|s| Uuid::parse_str(s).ok())
+                .or_else(|| self.context.as_ref().and_then(|c| c.user_id))
+                .unwrap_or_else(|| Uuid::new_v4());
+
+            // Get device info and IP address from context if available
+            let device_info = self.context.as_ref().and_then(|c| c.device_info.clone());
+            let ip_address = self.context.as_ref()
+                .and_then(|c| c.ip_address.clone())
+                .unwrap_or_else(|| "127.0.0.1".to_string());
 
             let new_session = user_session::ActiveModel {
                 id: Set(Uuid::new_v4()),
-                user_id: Set(placeholder_user_id),
+                user_id: Set(user_id),
                 token_hash: Set(session_id),
-                device_info: Set(None), // Could extract from request headers
-                ip_address: Set("127.0.0.1".to_string()), // Should extract from request
+                device_info: Set(device_info),
+                ip_address: Set(ip_address),
                 created_at: Set(Utc::now().into()),
                 expires_at: Set(expiry_chrono),
                 last_active_at: Set(Some(Utc::now().into())),
                 status: Set("Active".to_string()),
+                data: Set(Some(data_json)),
             };
             new_session
                 .insert(self.db.as_ref())
@@ -109,14 +160,18 @@ impl SessionStore for SeaOrmSessionStore {
             .map_err(|e| session_store::Error::Backend(e.to_string()))?;
 
         if let Some(session) = session {
-            // For now, return an empty session data map since we're not storing session data in the user_session table
-            // In a real implementation, you'd need to add a data column to store serialized session data
-            let data = HashMap::new();
+            // Deserialize session data from the database
+            let data = if let Some(data_json) = session.data {
+                serde_json::from_str(&data_json)
+                    .map_err(|e| session_store::Error::Decode(e.to_string()))?
+            } else {
+                HashMap::new()
+            };
 
             // Convert chrono::DateTime to time::OffsetDateTime
             let expiry_time = OffsetDateTime::from_unix_timestamp(session.expires_at.timestamp())
                 .map_err(|e| {
-                session_store::Error::Backend(format!("Invalid timestamp: {}", e))
+                session_store::Error::Backend(format!("Invalid timestamp: {e}"))
             })?;
 
             let record = Record {
@@ -208,6 +263,7 @@ mod tests {
                 .into(),
             last_active_at: Some(chrono::Utc::now().into()),
             status: "Active".to_string(),
+            data: Some("{}".to_string()),
         }
     }
 
@@ -239,7 +295,7 @@ mod tests {
 
         match result {
             Ok(_) => {}
-            Err(e) => panic!("Session store create failed: {:?}", e),
+            Err(e) => panic!("Session store create failed: {e:?}"),
         }
     }
 
@@ -283,7 +339,7 @@ mod tests {
 
         match result {
             Ok(_) => {}
-            Err(e) => panic!("Session store create with collision failed: {:?}", e),
+            Err(e) => panic!("Session store create with collision failed: {e:?}"),
         }
         assert_ne!(record.id, original_id); // ID should have changed due to collision
     }
@@ -316,7 +372,7 @@ mod tests {
 
         match result {
             Ok(_) => {}
-            Err(e) => panic!("Session store save existing failed: {:?}", e),
+            Err(e) => panic!("Session store save existing failed: {e:?}"),
         }
     }
 
@@ -388,7 +444,7 @@ mod tests {
 
         match result {
             Ok(_) => {}
-            Err(e) => panic!("Session store delete failed: {:?}", e),
+            Err(e) => panic!("Session store delete failed: {e:?}"),
         }
     }
 

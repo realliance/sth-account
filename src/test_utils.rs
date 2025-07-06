@@ -227,7 +227,7 @@ pub mod test_utils {
     /// Create a sample user model for testing
     pub fn sample_user(id: Option<Uuid>) -> user::Model {
         user::Model {
-            id: id.unwrap_or_else(|| Uuid::new_v4()),
+            id: id.unwrap_or_else(Uuid::new_v4),
             username: "testuser".to_string(),
             country: "USA".to_string(),
             favorite_tile: Some("Man1".to_string()),
@@ -249,7 +249,7 @@ pub mod test_utils {
     /// Create a sample bot model for testing
     pub fn sample_bot(id: Option<Uuid>, owner_id: Uuid) -> bot::Model {
         bot::Model {
-            id: id.unwrap_or_else(|| Uuid::new_v4()),
+            id: id.unwrap_or_else(Uuid::new_v4),
             name: "testbot".to_string(),
             owner_id,
             source_code: Some("https://github.com/user/bot".to_string()),
@@ -343,7 +343,7 @@ pub mod test_utils {
         });
 
         let response = client
-            .post(&format!("{}/auth/login", base_url))
+            .post(format!("{base_url}/auth/login"))
             .form(&login_data)
             .send()
             .await?;
@@ -375,7 +375,7 @@ pub mod test_utils {
             let server_addr = server
                 .server_address()
                 .ok_or("Failed to get server address")?;
-            let base_url = format!("http://{}", server_addr);
+            let base_url = format!("http://{server_addr}");
 
             let client = create_authenticated_client(&base_url, username, password).await?;
 
@@ -388,7 +388,7 @@ pub mod test_utils {
 
         pub async fn get(&self, path: &str) -> Result<reqwest::Response, reqwest::Error> {
             self.client
-                .get(&format!("{}{}", self.base_url, path))
+                .get(format!("{}{}", self.base_url, path))
                 .send()
                 .await
         }
@@ -399,7 +399,7 @@ pub mod test_utils {
             json: &serde_json::Value,
         ) -> Result<reqwest::Response, reqwest::Error> {
             self.client
-                .post(&format!("{}{}", self.base_url, path))
+                .post(format!("{}{}", self.base_url, path))
                 .json(json)
                 .send()
                 .await
@@ -411,7 +411,7 @@ pub mod test_utils {
             json: &serde_json::Value,
         ) -> Result<reqwest::Response, reqwest::Error> {
             self.client
-                .patch(&format!("{}{}", self.base_url, path))
+                .patch(format!("{}{}", self.base_url, path))
                 .json(json)
                 .send()
                 .await
@@ -419,7 +419,7 @@ pub mod test_utils {
 
         pub async fn delete(&self, path: &str) -> Result<reqwest::Response, reqwest::Error> {
             self.client
-                .delete(&format!("{}{}", self.base_url, path))
+                .delete(format!("{}{}", self.base_url, path))
                 .send()
                 .await
         }

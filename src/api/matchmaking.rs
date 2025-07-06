@@ -449,7 +449,7 @@ mod tests {
         let server = TestServer::new(app).unwrap();
 
         let response = server
-            .method(Method::DELETE, &format!("/api/v1/queue/{}", queue_id))
+            .method(Method::DELETE, &format!("/api/v1/queue/{queue_id}"))
             .await;
 
         assert_eq!(response.status_code(), StatusCode::UNAUTHORIZED);
@@ -492,7 +492,7 @@ mod tests {
         let response = server
             .method(
                 Method::GET,
-                &format!("/api/v1/queue/lobby/{}/stats", lobby_id),
+                &format!("/api/v1/queue/lobby/{lobby_id}/stats"),
             )
             .await;
 

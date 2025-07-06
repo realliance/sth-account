@@ -84,7 +84,7 @@ pub async fn create_room(
 
     // Validate max_players
     let max_players = request.max_players.unwrap_or(4);
-    if max_players < 3 || max_players > 4 {
+    if !(3..=4).contains(&max_players) {
         return Err(AppError::Validation(
             "max_players must be 3 or 4".to_string(),
         ));
@@ -124,7 +124,7 @@ pub async fn create_room(
         allow_bots: Set(request.allow_bots.unwrap_or(false)),
         invite_only: Set(request.invite_only.unwrap_or(false)),
         status: Set("Waiting".to_string()),
-        room_settings: Set(request.room_settings.map(|v| v.into())),
+        room_settings: Set(request.room_settings),
         created_at: Set(Utc::now().into()),
         started_at: Set(None),
         completed_at: Set(None),
@@ -393,11 +393,10 @@ pub async fn invite_to_room(
     }
 
     // Check if invitee exists
-    if !user::Entity::find_by_id(request.invitee_id)
+    if user::Entity::find_by_id(request.invitee_id)
         .one(state.db.as_ref())
         .await
-        .map_err(AppError::Database)?
-        .is_some()
+        .map_err(AppError::Database)?.is_none()
     {
         return Err(AppError::NotFound("User to invite not found".to_string()));
     }
@@ -512,11 +511,11 @@ mod tests {
     use axum_test::TestServer;
     use serde_json::json;
     use std::sync::Arc;
-    use uuid::Uuid;
+    
 
     use super::generate_room_code;
     use crate::test_utils::test_utils::*;
-    use entity::{private_room, user};
+    
 
 
     #[tokio::test]

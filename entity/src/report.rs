@@ -16,7 +16,7 @@ pub struct Model {
     pub description: Option<String>,
     pub status: String,
     #[sea_orm(column_type = "Text", nullable)]
-    pub report_write_up: Option<String>,
+    pub write_up: Option<String>,
     pub created_at: DateTimeWithTimeZone,
     pub severity: String,
     pub mod_report_author: Option<Uuid>,

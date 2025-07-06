@@ -52,16 +52,14 @@ pub async fn login(
         }
         Err(e) => {
             return Err(crate::error::AppError::Auth(format!(
-                "Authentication failed: {}",
-                e
+                "Authentication failed: {e}"
             )));
         }
     };
 
     if let Err(e) = auth_session.login(&user).await {
         return Err(AppError::Service(format!(
-            "Failed to create session: {}",
-            e
+            "Failed to create session: {e}"
         )));
     }
 
@@ -94,7 +92,7 @@ pub async fn logout(
                 message: "Logout successful".to_string(),
             }),
         )),
-        Err(e) => Err(AppError::Service(format!("Failed to logout: {}", e))),
+        Err(e) => Err(AppError::Service(format!("Failed to logout: {e}"))),
     }
 }
 
@@ -232,6 +230,7 @@ mod tests {
                 .into(),
             last_active_at: Some(chrono::Utc::now().into()),
             status: "Active".to_string(),
+            data: None,
         };
 
         // Mock database with queries for: login, session creation, and user lookup
@@ -270,7 +269,7 @@ mod tests {
         let server = TestServer::new(app).unwrap();
 
         let response = server
-            .method(Method::GET, &format!("/api/v1/users/{}", user_id))
+            .method(Method::GET, &format!("/api/v1/users/{user_id}"))
             .await;
 
         // This test will currently fail due to authentication, but that's expected
@@ -295,7 +294,7 @@ mod tests {
         let server = TestServer::new(app).unwrap();
 
         let response = server
-            .method(Method::GET, &format!("/api/v1/users/{}", user_id))
+            .method(Method::GET, &format!("/api/v1/users/{user_id}"))
             .await;
 
         assert_eq!(response.status_code(), StatusCode::UNAUTHORIZED);
@@ -336,7 +335,7 @@ mod tests {
         });
 
         let response = server
-            .method(Method::PATCH, &format!("/api/v1/users/{}", user_id))
+            .method(Method::PATCH, &format!("/api/v1/users/{user_id}"))
             .json(&request_body)
             .await;
 
@@ -368,7 +367,7 @@ mod tests {
         let server = TestServer::new(app).unwrap();
 
         let response = server
-            .method(Method::DELETE, &format!("/api/v1/users/{}", user_id))
+            .method(Method::DELETE, &format!("/api/v1/users/{user_id}"))
             .await;
 
         assert_eq!(response.status_code(), StatusCode::UNAUTHORIZED);

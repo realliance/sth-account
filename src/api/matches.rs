@@ -299,7 +299,7 @@ pub async fn get_match(
             || user_bot_ids.contains(&match_model.participant3_id)
             || match_model
                 .participant4_id
-                .map_or(false, |id| user_bot_ids.contains(&id));
+                .is_some_and(|id| user_bot_ids.contains(&id));
     }
 
     if !user_participated && !bot_participated && current_user.role != "Admin" {
@@ -522,7 +522,7 @@ mod tests {
         let server = TestServer::new(app).unwrap();
 
         let response = server
-            .method(Method::GET, &format!("/api/v1/matches/user/{}", user_id))
+            .method(Method::GET, &format!("/api/v1/matches/user/{user_id}"))
             .await;
 
         assert_eq!(response.status_code(), StatusCode::UNAUTHORIZED);
@@ -544,7 +544,7 @@ mod tests {
         let server = TestServer::new(app).unwrap();
 
         let response = server
-            .method(Method::GET, &format!("/api/v1/matches/bot/{}", bot_id))
+            .method(Method::GET, &format!("/api/v1/matches/bot/{bot_id}"))
             .await;
 
         assert_eq!(response.status_code(), StatusCode::UNAUTHORIZED);
@@ -566,7 +566,7 @@ mod tests {
         let server = TestServer::new(app).unwrap();
 
         let response = server
-            .method(Method::GET, &format!("/api/v1/matches/{}", match_id))
+            .method(Method::GET, &format!("/api/v1/matches/{match_id}"))
             .await;
 
         assert_eq!(response.status_code(), StatusCode::UNAUTHORIZED);
@@ -588,7 +588,7 @@ mod tests {
         let server = TestServer::new(app).unwrap();
 
         let response = server
-            .method(Method::GET, &format!("/api/v1/stats/user/{}", user_id))
+            .method(Method::GET, &format!("/api/v1/stats/user/{user_id}"))
             .await;
 
         assert_eq!(response.status_code(), StatusCode::UNAUTHORIZED);
@@ -610,7 +610,7 @@ mod tests {
         let server = TestServer::new(app).unwrap();
 
         let response = server
-            .method(Method::GET, &format!("/api/v1/stats/bot/{}", bot_id))
+            .method(Method::GET, &format!("/api/v1/stats/bot/{bot_id}"))
             .await;
 
         assert_eq!(response.status_code(), StatusCode::UNAUTHORIZED);
@@ -664,7 +664,7 @@ mod tests {
         let server = TestServer::new(app).unwrap();
 
         let response = server
-            .method(Method::GET, &format!("/api/v1/matches/user/{}?limit=10", user_id))
+            .method(Method::GET, &format!("/api/v1/matches/user/{user_id}?limit=10"))
             .await;
 
         assert!(
@@ -689,7 +689,7 @@ mod tests {
         let server = TestServer::new(app).unwrap();
 
         let response = server
-            .method(Method::GET, &format!("/api/v1/matches/user/{}", other_user_id))
+            .method(Method::GET, &format!("/api/v1/matches/user/{other_user_id}"))
             .await;
 
         assert_eq!(response.status_code(), StatusCode::UNAUTHORIZED);
@@ -735,7 +735,7 @@ mod tests {
         let server = TestServer::new(app).unwrap();
 
         let response = server
-            .method(Method::GET, &format!("/api/v1/matches/{}", match_id))
+            .method(Method::GET, &format!("/api/v1/matches/{match_id}"))
             .await;
 
         assert_eq!(response.status_code(), StatusCode::UNAUTHORIZED);
@@ -782,7 +782,7 @@ mod tests {
         let server = TestServer::new(app).unwrap();
 
         let response = server
-            .method(Method::GET, &format!("/api/v1/matches/{}", match_id))
+            .method(Method::GET, &format!("/api/v1/matches/{match_id}"))
             .await;
 
         assert_eq!(response.status_code(), StatusCode::UNAUTHORIZED);
@@ -829,7 +829,7 @@ mod tests {
         let server = TestServer::new(app).unwrap();
 
         let response = server
-            .method(Method::GET, &format!("/api/v1/stats/user/{}", user_id))
+            .method(Method::GET, &format!("/api/v1/stats/user/{user_id}"))
             .await;
 
         assert_eq!(response.status_code(), StatusCode::UNAUTHORIZED);
@@ -891,7 +891,7 @@ mod tests {
         let server = TestServer::new(app).unwrap();
 
         let response = server
-            .method(Method::GET, &format!("/api/v1/matches/bot/{}", bot_id))
+            .method(Method::GET, &format!("/api/v1/matches/bot/{bot_id}"))
             .await;
 
         assert_eq!(response.status_code(), StatusCode::UNAUTHORIZED);
@@ -953,7 +953,7 @@ mod tests {
         let server = TestServer::new(app).unwrap();
 
         let response = server
-            .method(Method::GET, &format!("/api/v1/stats/bot/{}", bot_id))
+            .method(Method::GET, &format!("/api/v1/stats/bot/{bot_id}"))
             .await;
 
         assert_eq!(response.status_code(), StatusCode::UNAUTHORIZED);
@@ -990,7 +990,7 @@ mod tests {
         let server = TestServer::new(app).unwrap();
 
         let response = server
-            .method(Method::GET, &format!("/api/v1/stats/user/{}", user_id))
+            .method(Method::GET, &format!("/api/v1/stats/user/{user_id}"))
             .await;
 
         // Note: This will be UNAUTHORIZED in the test environment
@@ -1015,7 +1015,7 @@ mod tests {
         let server = TestServer::new(app).unwrap();
 
         let response = server
-            .method(Method::GET, &format!("/api/v1/stats/user/{}", user_id))
+            .method(Method::GET, &format!("/api/v1/stats/user/{user_id}"))
             .await;
 
         // Note: This will be UNAUTHORIZED in the test environment
@@ -1070,7 +1070,7 @@ mod tests {
         let server = TestServer::new(app).unwrap();
 
         let response = server
-            .method(Method::GET, &format!("/api/v1/stats/bot/{}", bot_id))
+            .method(Method::GET, &format!("/api/v1/stats/bot/{bot_id}"))
             .await;
 
         // Note: This will be UNAUTHORIZED in the test environment
@@ -1110,7 +1110,7 @@ mod tests {
         let server = TestServer::new(app).unwrap();
 
         let response = server
-            .method(Method::GET, &format!("/api/v1/stats/bot/{}", bot_id))
+            .method(Method::GET, &format!("/api/v1/stats/bot/{bot_id}"))
             .await;
 
         // Note: This will be UNAUTHORIZED in the test environment

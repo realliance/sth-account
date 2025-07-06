@@ -56,7 +56,7 @@ pub struct ReportResponse {
     pub offense_type: String,
     pub description: Option<String>,
     pub status: String,
-    pub report_write_up: Option<String>,
+    pub write_up: Option<String>,
     pub created_at: chrono::DateTime<chrono::FixedOffset>,
     pub severity: String,
     pub mod_report_author: Option<Uuid>,
@@ -97,7 +97,7 @@ pub struct GetReportsQuery {
 #[derive(Debug, Deserialize)]
 pub struct UpdateReportRequest {
     pub status: String,
-    pub report_write_up: Option<String>,
+    pub write_up: Option<String>,
     pub severity: Option<String>,
 }
 
@@ -145,7 +145,7 @@ pub async fn get_reports(
     }
 
     let page = query.page.unwrap_or(1).max(1);
-    let per_page = query.per_page.unwrap_or(20).min(100).max(1);
+    let per_page = query.per_page.unwrap_or(20).clamp(1, 100);
 
     let mut query_builder = report::Entity::find()
         .order_by_desc(report::Column::CreatedAt);
@@ -192,7 +192,7 @@ pub async fn get_reports(
             offense_type: report_model.offense_type,
             description: report_model.description,
             status: report_model.status,
-            report_write_up: report_model.report_write_up,
+            write_up: report_model.write_up,
             created_at: report_model.created_at,
             severity: report_model.severity,
             mod_report_author: report_model.mod_report_author,
@@ -201,7 +201,7 @@ pub async fn get_reports(
         });
     }
 
-    let total_pages = (total_count + per_page - 1) / per_page;
+    let total_pages = total_count.div_ceil(per_page);
 
     Ok((
         StatusCode::OK,
@@ -242,8 +242,8 @@ pub async fn update_report(
     active_model.status = Set(request.status.clone());
     active_model.mod_report_author = Set(Some(current_user.id));
     
-    if let Some(write_up) = request.report_write_up {
-        active_model.report_write_up = Set(Some(write_up));
+    if let Some(write_up) = request.write_up {
+        active_model.write_up = Set(Some(write_up));
     }
     
     if let Some(severity) = request.severity {
@@ -266,7 +266,7 @@ pub async fn update_report(
             "new_status": request.status,
             "previous_status": report.status
         }))),
-        ip_address: Set(extract_ip_address(&headers, connect_info.clone())),
+        ip_address: Set(extract_ip_address(&headers, connect_info)),
         moderator_id: Set(Some(current_user.id)),
         created_at: Set(Utc::now().into()),
         deleted_at: Set(None),
@@ -294,7 +294,7 @@ pub async fn update_report(
         offense_type: updated_report.offense_type,
         description: updated_report.description,
         status: updated_report.status,
-        report_write_up: updated_report.report_write_up,
+        write_up: updated_report.write_up,
         created_at: updated_report.created_at,
         severity: updated_report.severity,
         mod_report_author: updated_report.mod_report_author,
@@ -371,7 +371,7 @@ pub async fn moderate_user(
         user_id: Set(target_user.id),
         action_type: Set(format!("UserModeration_{}", request.action)),
         details: Set(Some(action_details)),
-        ip_address: Set(extract_ip_address(&headers, connect_info.clone())),
+        ip_address: Set(extract_ip_address(&headers, connect_info)),
         moderator_id: Set(Some(current_user.id)),
         created_at: Set(Utc::now().into()),
         deleted_at: Set(None),
@@ -512,7 +512,7 @@ pub async fn update_system_config(
             "config_key": request.key,
             "config_id": config.id
         }))),
-        ip_address: Set(extract_ip_address(&headers, connect_info.clone())),
+        ip_address: Set(extract_ip_address(&headers, connect_info)),
         moderator_id: Set(Some(current_user.id)),
         created_at: Set(Utc::now().into()),
         deleted_at: Set(None),
@@ -556,7 +556,7 @@ pub async fn get_audit_logs(
     }
 
     let page = query.page.unwrap_or(1).max(1);
-    let per_page = query.per_page.unwrap_or(20).min(100).max(1);
+    let per_page = query.per_page.unwrap_or(20).clamp(1, 100);
 
     let query_builder = audit_log::Entity::find()
         .filter(audit_log::Column::DeletedAt.is_null()) // Only non-deleted entries
@@ -612,7 +612,7 @@ pub async fn get_audit_logs(
         });
     }
 
-    let total_pages = (total_count + per_page - 1) / per_page;
+    let total_pages = total_count.div_ceil(per_page);
 
     Ok((
         StatusCode::OK,

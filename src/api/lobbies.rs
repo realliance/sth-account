@@ -56,11 +56,11 @@ pub enum LobbyPreset {
     AllBotsFourPlayer,
 }
 
-impl ToString for LobbyPreset {
-    fn to_string(&self) -> String {
+impl std::fmt::Display for LobbyPreset {
+    fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
         match self {
-            LobbyPreset::GeneralFourPlayer => "GeneralFourPlayer".to_string(),
-            LobbyPreset::AllBotsFourPlayer => "AllBotsFourPlayer".to_string(),
+            LobbyPreset::GeneralFourPlayer => write!(f, "GeneralFourPlayer"),
+            LobbyPreset::AllBotsFourPlayer => write!(f, "AllBotsFourPlayer"),
         }
     }
 }
@@ -339,7 +339,7 @@ mod tests {
         let server = TestServer::new(app).unwrap();
 
         let response = server
-            .method(Method::GET, &format!("/api/v1/lobbies/{}", lobby_id))
+            .method(Method::GET, &format!("/api/v1/lobbies/{lobby_id}"))
             .await;
 
         assert_eq!(response.status_code(), StatusCode::OK);
@@ -364,7 +364,7 @@ mod tests {
         let server = TestServer::new(app).unwrap();
 
         let response = server
-            .method(Method::GET, &format!("/api/v1/lobbies/{}", lobby_id))
+            .method(Method::GET, &format!("/api/v1/lobbies/{lobby_id}"))
             .await;
 
         assert_eq!(response.status_code(), StatusCode::BAD_REQUEST);
@@ -413,7 +413,7 @@ mod tests {
         });
 
         let response = server
-            .method(Method::PATCH, &format!("/api/v1/lobbies/{}", lobby_id))
+            .method(Method::PATCH, &format!("/api/v1/lobbies/{lobby_id}"))
             .json(&request_body)
             .await;
 
@@ -436,7 +436,7 @@ mod tests {
         let server = TestServer::new(app).unwrap();
 
         let response = server
-            .method(Method::DELETE, &format!("/api/v1/lobbies/{}", lobby_id))
+            .method(Method::DELETE, &format!("/api/v1/lobbies/{lobby_id}"))
             .await;
 
         assert_eq!(response.status_code(), StatusCode::UNAUTHORIZED);

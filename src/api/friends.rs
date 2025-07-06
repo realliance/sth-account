@@ -243,7 +243,7 @@ mod tests {
         let server = TestServer::new(app).unwrap();
 
         let response = server
-            .method(Method::POST, &format!("/api/v1/friends/requests/{}/respond", friendship_id))
+            .method(Method::POST, &format!("/api/v1/friends/requests/{friendship_id}/respond"))
             .json(&json!({"accept": true}))
             .await;
 
@@ -350,7 +350,7 @@ mod tests {
         let server = TestServer::new(app).unwrap();
 
         let response = server
-            .method(Method::DELETE, &format!("/api/v1/friends/{}", friendship_id))
+            .method(Method::DELETE, &format!("/api/v1/friends/{friendship_id}"))
             .await;
 
         assert_eq!(response.status_code(), StatusCode::UNAUTHORIZED);

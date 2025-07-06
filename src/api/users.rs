@@ -214,7 +214,7 @@ pub async fn delete_user(
         .chars()
         .take(8)
         .collect::<String>();
-    user_update.username = Set(format!("Anonymous_User_{}", anonymous_id));
+    user_update.username = Set(format!("Anonymous_User_{anonymous_id}"));
 
     user_update.update(state.db.as_ref()).await?;
 

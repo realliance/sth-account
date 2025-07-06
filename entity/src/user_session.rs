@@ -16,6 +16,8 @@ pub struct Model {
     pub expires_at: DateTimeWithTimeZone,
     pub last_active_at: Option<DateTimeWithTimeZone>,
     pub status: String,
+    #[sea_orm(column_type = "Text", nullable)]
+    pub data: Option<String>,
 }
 
 #[derive(Copy, Clone, Debug, EnumIter, DeriveRelation)]

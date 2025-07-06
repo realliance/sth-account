@@ -20,6 +20,7 @@ pub enum AppError {
     Service(String),
 
     #[error("Worker error: {0}")]
+    #[allow(dead_code)]
     Worker(String),
 
     #[error("Job error: {0}")]

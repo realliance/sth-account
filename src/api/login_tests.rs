@@ -32,6 +32,7 @@ mod tests {
                 .into(),
             last_active_at: Some(chrono::Utc::now().into()),
             status: "Active".to_string(),
+            data: None,
         };
 
         let db = create_mock_db()

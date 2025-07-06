@@ -93,7 +93,7 @@ pub async fn get_notifications(
     let current_user = auth_session.user.ok_or(AppError::Auth("Not authenticated".to_string()))?;
 
     let page = query.page.unwrap_or(1).max(1);
-    let per_page = query.per_page.unwrap_or(20).min(100).max(1);
+    let per_page = query.per_page.unwrap_or(20).clamp(1, 100);
 
     let mut query_builder = notifications::Entity::find()
         .filter(notifications::Column::UserId.eq(current_user.id))
@@ -128,7 +128,7 @@ pub async fn get_notifications(
         .all(&*state.db)
         .await?;
 
-    let total_pages = (total_count + per_page - 1) / per_page;
+    let total_pages = total_count.div_ceil(per_page);
 
     let response = NotificationsResponse {
         notifications: notifications.into_iter().map(NotificationResponse::from).collect(),
@@ -564,7 +564,7 @@ mod tests {
         let server = TestServer::new(app).unwrap();
 
         let response = server
-            .method(Method::DELETE, &format!("/api/v1/notifications/{}", notification_id))
+            .method(Method::DELETE, &format!("/api/v1/notifications/{notification_id}"))
             .await;
 
         assert_eq!(response.status_code(), StatusCode::UNAUTHORIZED);
@@ -598,7 +598,7 @@ mod tests {
         let server = TestServer::new(app).unwrap();
 
         let response = server
-            .method(Method::DELETE, &format!("/api/v1/notifications/{}", notification_id))
+            .method(Method::DELETE, &format!("/api/v1/notifications/{notification_id}"))
             .await;
 
         assert_eq!(response.status_code(), StatusCode::UNAUTHORIZED);

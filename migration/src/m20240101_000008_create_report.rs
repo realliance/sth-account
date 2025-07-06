@@ -18,7 +18,7 @@ impl MigrationTrait for Migration {
                     .col(string(Report::OffenseType))
                     .col(text_null(Report::Description))
                     .col(string(Report::Status).default("Active"))
-                    .col(text_null(Report::ReportWriteUp))
+                    .col(text_null(Report::WriteUp))
                     .col(timestamp_with_time_zone(Report::CreatedAt))
                     .col(string(Report::Severity).default("Medium"))
                     .col(uuid_null(Report::ModReportAuthor))
@@ -108,7 +108,7 @@ enum Report {
     OffenseType,
     Description,
     Status,
-    ReportWriteUp,
+    WriteUp,
     CreatedAt,
     Severity,
     ModReportAuthor,

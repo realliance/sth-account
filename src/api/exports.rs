@@ -5,8 +5,8 @@ use axum::{
 };
 use chrono::{Duration, Utc};
 use sea_orm::{
-    ActiveModelTrait, ColumnTrait, EntityTrait, QueryFilter, QueryOrder, Set, PaginatorTrait,
-    QuerySelect,
+    ActiveModelTrait, ColumnTrait, EntityTrait, PaginatorTrait, QueryFilter, QueryOrder,
+    QuerySelect, Set,
 };
 use serde::{Deserialize, Serialize};
 use uuid::Uuid;
@@ -17,8 +17,10 @@ use crate::{
     error::{AppError, Result},
     service::AppState,
 };
-use entity::{data_export_requests, user, user_statistics, bot, friendship, notifications, r#match, lobby_pool};
-
+use entity::{
+    bot, data_export_requests, friendship, lobby_pool, r#match, notifications, user,
+    user_statistics,
+};
 
 #[derive(Debug, Serialize)]
 pub struct DataExportResponse {
@@ -151,7 +153,9 @@ pub async fn request_data_export(
 ) -> Result<(StatusCode, HeaderMap, Json<DataExportResponse>)> {
     add_rate_limit_headers(&mut headers);
 
-    let current_user = auth_session.user.ok_or(AppError::Auth("Not authenticated".to_string()))?;
+    let current_user = auth_session
+        .user
+        .ok_or(AppError::Auth("Not authenticated".to_string()))?;
 
     // Validate export type
     let valid_types = ["UserData", "MatchHistory", "BotStatistics", "FullExport"];
@@ -162,14 +166,17 @@ pub async fn request_data_export(
     // Check if user has a pending export request
     let existing_pending = data_export_requests::Entity::find()
         .filter(
-            data_export_requests::Column::UserId.eq(current_user.id)
-                .and(data_export_requests::Column::Status.eq("Pending"))
+            data_export_requests::Column::UserId
+                .eq(current_user.id)
+                .and(data_export_requests::Column::Status.eq("Pending")),
         )
         .one(&*state.db)
         .await?;
 
     if existing_pending.is_some() {
-        return Err(AppError::BadRequest("You already have a pending export request".to_string()));
+        return Err(AppError::BadRequest(
+            "You already have a pending export request".to_string(),
+        ));
     }
 
     // Create export request
@@ -186,17 +193,6 @@ pub async fn request_data_export(
 
     let created_export = export_request.insert(&*state.db).await?;
 
-    // Queue the export job for background processing
-    // This would typically send a message to a worker queue system like:
-    // - Redis/Sidekiq
-    // - RabbitMQ
-    // - AWS SQS
-    // - Or the built-in job system mentioned in the CLI modes
-    // 
-    // For now, exports are generated on-demand in the download endpoint
-    // Future implementation would queue a job like:
-    // job_queue.enqueue(ExportJob::new(created_export.id, created_export.export_type)).await?;
-
     Ok((
         StatusCode::CREATED,
         headers,
@@ -212,10 +208,12 @@ pub async fn get_export_requests(
 ) -> Result<(StatusCode, HeaderMap, Json<serde_json::Value>)> {
     add_rate_limit_headers(&mut headers);
 
-    let current_user = auth_session.user.ok_or(AppError::Auth("Not authenticated".to_string()))?;
+    let current_user = auth_session
+        .user
+        .ok_or(AppError::Auth("Not authenticated".to_string()))?;
 
     let page = query.page.unwrap_or(1).max(1);
-    let per_page = query.per_page.unwrap_or(10).min(50).max(1);
+    let per_page = query.per_page.unwrap_or(10).clamp(1, 50);
 
     let mut query_builder = data_export_requests::Entity::find()
         .filter(data_export_requests::Column::UserId.eq(current_user.id))
@@ -233,8 +231,9 @@ pub async fn get_export_requests(
         .all(&*state.db)
         .await?;
 
-    let responses: Vec<DataExportResponse> = exports.into_iter().map(DataExportResponse::from).collect();
-    let total_pages = (total_count + per_page - 1) / per_page;
+    let responses: Vec<DataExportResponse> =
+        exports.into_iter().map(DataExportResponse::from).collect();
+    let total_pages = total_count.div_ceil(per_page);
 
     Ok((
         StatusCode::OK,
@@ -257,7 +256,9 @@ pub async fn download_export(
 ) -> Result<(StatusCode, HeaderMap, Json<UserDataExport>)> {
     add_rate_limit_headers(&mut headers);
 
-    let current_user = auth_session.user.ok_or(AppError::Auth("Not authenticated".to_string()))?;
+    let current_user = auth_session
+        .user
+        .ok_or(AppError::Auth("Not authenticated".to_string()))?;
 
     // Find the export request
     let export_request = data_export_requests::Entity::find_by_id(export_id)
@@ -272,7 +273,9 @@ pub async fn download_export(
 
     // Check if export is completed
     if export_request.status != "Completed" {
-        return Err(AppError::BadRequest("Export is not yet completed".to_string()));
+        return Err(AppError::BadRequest(
+            "Export is not yet completed".to_string(),
+        ));
     }
 
     // Check if export has expired
@@ -283,7 +286,8 @@ pub async fn download_export(
     }
 
     // Generate the export data
-    let export_data = generate_user_data_export(&state, &current_user, &export_request.export_type).await?;
+    let export_data =
+        generate_user_data_export(&state, &current_user, &export_request.export_type).await?;
 
     Ok((StatusCode::OK, headers, Json(export_data)))
 }
@@ -296,7 +300,9 @@ pub async fn cancel_export_request(
 ) -> Result<(StatusCode, HeaderMap)> {
     add_rate_limit_headers(&mut headers);
 
-    let current_user = auth_session.user.ok_or(AppError::Auth("Not authenticated".to_string()))?;
+    let current_user = auth_session
+        .user
+        .ok_or(AppError::Auth("Not authenticated".to_string()))?;
 
     // Find the export request
     let export_request = data_export_requests::Entity::find_by_id(export_id)
@@ -311,7 +317,9 @@ pub async fn cancel_export_request(
 
     // Check if export can be cancelled
     if export_request.status == "Completed" {
-        return Err(AppError::BadRequest("Cannot cancel completed export".to_string()));
+        return Err(AppError::BadRequest(
+            "Cannot cancel completed export".to_string(),
+        ));
     }
 
     // Delete the export request
@@ -358,7 +366,9 @@ async fn generate_user_data_export(
             second_place: stats.second_place,
             third_place: stats.third_place,
             fourth_place: stats.fourth_place,
-            average_score: stats.average_score.map(|d| d.to_string().parse::<f64>().unwrap_or(0.0)),
+            average_score: stats
+                .average_score
+                .map(|d| d.to_string().parse::<f64>().unwrap_or(0.0)),
             peak_mmr: stats.peak_mmr,
             current_streak: stats.current_streak,
             last_game_at: stats.last_game_at,
@@ -367,11 +377,11 @@ async fn generate_user_data_export(
     // Friends (accepted friendships only)
     let friendships = friendship::Entity::find()
         .filter(
-            friendship::Column::Status.eq("Accepted")
-                .and(
-                    friendship::Column::RequesterId.eq(user.id)
-                        .or(friendship::Column::AddresseeId.eq(user.id))
-                )
+            friendship::Column::Status.eq("Accepted").and(
+                friendship::Column::RequesterId
+                    .eq(user.id)
+                    .or(friendship::Column::AddresseeId.eq(user.id)),
+            ),
         )
         .all(&*state.db)
         .await?;
@@ -434,10 +444,11 @@ async fn generate_user_data_export(
     // Recent matches (last 50) where the user participated
     let recent_matches_data = r#match::Entity::find()
         .filter(
-            r#match::Column::Participant1Id.eq(user.id)
+            r#match::Column::Participant1Id
+                .eq(user.id)
                 .or(r#match::Column::Participant2Id.eq(user.id))
                 .or(r#match::Column::Participant3Id.eq(user.id))
-                .or(r#match::Column::Participant4Id.eq(user.id))
+                .or(r#match::Column::Participant4Id.eq(user.id)),
         )
         .find_also_related(lobby_pool::Entity)
         .order_by_desc(r#match::Column::StartedAt)
@@ -448,18 +459,29 @@ async fn generate_user_data_export(
     let mut recent_matches = Vec::new();
     for (match_data, lobby_option) in recent_matches_data {
         // Find which participant slot this user was in
-        let (participant_score, participant_mmr_delta) = 
-            if match_data.participant1_id == user.id {
-                (match_data.participant1_score, match_data.participant1_mmr_delta)
-            } else if match_data.participant2_id == user.id {
-                (match_data.participant2_score, match_data.participant2_mmr_delta)
-            } else if match_data.participant3_id == user.id {
-                (match_data.participant3_score, match_data.participant3_mmr_delta)
-            } else if match_data.participant4_id.map_or(false, |id| id == user.id) {
-                (match_data.participant4_score, match_data.participant4_mmr_delta)
-            } else {
-                (None, None) // This shouldn't happen given our filter
-            };
+        let (participant_score, participant_mmr_delta) = if match_data.participant1_id == user.id {
+            (
+                match_data.participant1_score,
+                match_data.participant1_mmr_delta,
+            )
+        } else if match_data.participant2_id == user.id {
+            (
+                match_data.participant2_score,
+                match_data.participant2_mmr_delta,
+            )
+        } else if match_data.participant3_id == user.id {
+            (
+                match_data.participant3_score,
+                match_data.participant3_mmr_delta,
+            )
+        } else if match_data.participant4_id == Some(user.id) {
+            (
+                match_data.participant4_score,
+                match_data.participant4_mmr_delta,
+            )
+        } else {
+            (None, None) // This shouldn't happen given our filter
+        };
 
         let lobby_name = lobby_option
             .map(|lobby| lobby.name)
@@ -479,7 +501,8 @@ async fn generate_user_data_export(
         export_date: Utc::now(),
         export_type: export_type.to_string(),
         data_retention_policy: "Export files are retained for 7 days after generation".to_string(),
-        contact_info: "For questions about your data, contact: privacy@smallturtlehouse.com".to_string(),
+        contact_info: "For questions about your data, contact: privacy@smallturtlehouse.com"
+            .to_string(),
     };
 
     Ok(UserDataExport {
@@ -502,7 +525,9 @@ pub async fn complete_export(
 ) -> Result<(StatusCode, HeaderMap, Json<DataExportResponse>)> {
     add_rate_limit_headers(&mut headers);
 
-    let current_user = auth_session.user.ok_or(AppError::Auth("Not authenticated".to_string()))?;
+    let current_user = auth_session
+        .user
+        .ok_or(AppError::Auth("Not authenticated".to_string()))?;
 
     // Check if user has admin privileges (this would typically be called by a worker)
     if current_user.role != "Admin" {
@@ -547,7 +572,8 @@ mod tests {
 
         let response = server.method(Method::GET, "/api/v1/exports").await;
         assert!(
-            response.status_code() == StatusCode::UNAUTHORIZED || response.status_code() == StatusCode::FORBIDDEN,
+            response.status_code() == StatusCode::UNAUTHORIZED
+                || response.status_code() == StatusCode::FORBIDDEN,
             "Export endpoints should require authentication"
         );
     }
@@ -563,7 +589,8 @@ mod tests {
             .json(&json!({"export_type": "UserData"}))
             .await;
         assert!(
-            response.status_code() == StatusCode::UNAUTHORIZED || response.status_code() == StatusCode::FORBIDDEN,
+            response.status_code() == StatusCode::UNAUTHORIZED
+                || response.status_code() == StatusCode::FORBIDDEN,
             "Export request endpoint should require auth"
         );
     }
@@ -586,8 +613,8 @@ mod tests {
             .await;
 
         assert!(
-            response.status_code() == StatusCode::BAD_REQUEST ||
-            response.status_code() == StatusCode::UNAUTHORIZED,
+            response.status_code() == StatusCode::BAD_REQUEST
+                || response.status_code() == StatusCode::UNAUTHORIZED,
             "Should reject invalid export type"
         );
     }
@@ -616,8 +643,7 @@ mod tests {
             assert_ne!(
                 response.status_code(),
                 StatusCode::NOT_FOUND,
-                "Export type {} should be valid",
-                export_type
+                "Export type {export_type} should be valid"
             );
         }
     }

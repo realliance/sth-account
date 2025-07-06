@@ -18,6 +18,7 @@ mod m20240101_000015_create_audit_log;
 mod m20240101_000016_create_data_export_requests;
 mod m20240101_000017_create_bot_statistics;
 mod m20240101_000018_create_system_configuration;
+mod m20240101_000019_add_session_data_field;
 
 pub struct Migrator;
 
@@ -43,6 +44,7 @@ impl MigratorTrait for Migrator {
             Box::new(m20240101_000016_create_data_export_requests::Migration),
             Box::new(m20240101_000017_create_bot_statistics::Migration),
             Box::new(m20240101_000018_create_system_configuration::Migration),
+            Box::new(m20240101_000019_add_session_data_field::Migration),
         ]
     }
 }
@@ -75,7 +77,6 @@ pub async fn run_migration(command: MigrationCommand) -> Result<(), sea_orm::DbE
         }
         MigrationCommand::Status => {
             println!("Migration status checking...");
-            // For now, just check if we can connect to the database
             println!("Database connection: OK");
             println!("Use 'up' to apply all pending migrations");
         }
@@ -85,7 +86,7 @@ pub async fn run_migration(command: MigrationCommand) -> Result<(), sea_orm::DbE
         }
         MigrationCommand::Generate { name } => {
             println!("Migration generation should be done using:");
-            println!("  sea-orm-cli migrate generate {}", name);
+            println!("  sea-orm-cli migrate generate {name}");
             println!("Run this command in the migration/ directory");
         }
     }

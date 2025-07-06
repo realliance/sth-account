@@ -367,7 +367,7 @@ mod tests {
         let server = TestServer::new(app).unwrap();
 
         let response = server
-            .method(Method::GET, &format!("/api/v1/bots/{}", bot_id))
+            .method(Method::GET, &format!("/api/v1/bots/{bot_id}"))
             .await;
 
         assert_eq!(response.status_code(), StatusCode::OK);
@@ -391,7 +391,7 @@ mod tests {
         let server = TestServer::new(app).unwrap();
 
         let response = server
-            .method(Method::GET, &format!("/api/v1/bots/{}", bot_id))
+            .method(Method::GET, &format!("/api/v1/bots/{bot_id}"))
             .await;
 
         assert_eq!(response.status_code(), StatusCode::BAD_REQUEST);
@@ -431,7 +431,7 @@ mod tests {
         });
 
         let response = server
-            .method(Method::PATCH, &format!("/api/v1/bots/{}", bot_id))
+            .method(Method::PATCH, &format!("/api/v1/bots/{bot_id}"))
             .json(&request_body)
             .await;
 
@@ -471,7 +471,7 @@ mod tests {
         });
 
         let response = server
-            .method(Method::PATCH, &format!("/api/v1/bots/{}", bot_id))
+            .method(Method::PATCH, &format!("/api/v1/bots/{bot_id}"))
             .json(&request_body)
             .await;
 
@@ -507,7 +507,7 @@ mod tests {
         let server = TestServer::new(app).unwrap();
 
         let response = server
-            .method(Method::DELETE, &format!("/api/v1/bots/{}", bot_id))
+            .method(Method::DELETE, &format!("/api/v1/bots/{bot_id}"))
             .await;
 
         assert_eq!(response.status_code(), StatusCode::UNAUTHORIZED);
@@ -542,7 +542,7 @@ mod tests {
         let server = TestServer::new(app).unwrap();
 
         let response = server
-            .method(Method::GET, &format!("/api/v1/users/{}/bots", user_id))
+            .method(Method::GET, &format!("/api/v1/users/{user_id}/bots"))
             .await;
 
         assert_eq!(response.status_code(), StatusCode::UNAUTHORIZED);
@@ -572,7 +572,7 @@ mod tests {
         let server = TestServer::new(app).unwrap();
 
         let response = server
-            .method(Method::GET, &format!("/api/v1/users/{}/bots", owner_id))
+            .method(Method::GET, &format!("/api/v1/users/{owner_id}/bots"))
             .await;
 
         assert_eq!(response.status_code(), StatusCode::UNAUTHORIZED);
