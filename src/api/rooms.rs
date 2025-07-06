@@ -4,20 +4,17 @@ use axum::{
     response::Json,
 };
 use chrono::Utc;
-use rand::{Rng, distributions::Alphanumeric};
+use rand::{distributions::Alphanumeric, Rng};
 use sea_orm::{ActiveModelTrait, ColumnTrait, EntityTrait, PaginatorTrait, QueryFilter, Set};
 use serde::{Deserialize, Serialize};
+use utoipa::ToSchema;
 use uuid::Uuid;
 
-use crate::{
-    auth::AuthSession,
-    error::{AppError, Result},
-    service::AppState,
-};
+use crate::{auth::AuthSession, error::{AppError, Result}, service::AppState};
 
 use entity::{private_room, room_invitation, room_participants, user};
 
-#[derive(Debug, Serialize)]
+#[derive(Debug, Serialize, ToSchema)]
 pub struct PrivateRoomResponse {
     pub id: Uuid,
     pub host_id: Uuid,
@@ -48,27 +45,41 @@ impl From<(private_room::Model, usize)> for PrivateRoomResponse {
     }
 }
 
-#[derive(Debug, Deserialize)]
+#[derive(Debug, Deserialize, ToSchema)]
 pub struct CreateRoomRequest {
     pub room_name: String,
     pub password: Option<String>,
+    #[schema(example = 4)]
     pub max_players: Option<i32>, // 3 or 4
     pub allow_bots: Option<bool>,
     pub invite_only: Option<bool>,
     pub room_settings: Option<serde_json::Value>,
 }
 
-#[derive(Debug, Deserialize)]
+#[derive(Debug, Deserialize, ToSchema)]
 pub struct JoinRoomRequest {
+    #[schema(example = "ABC123")]
     pub room_code: String,
     pub password: Option<String>,
 }
 
-#[derive(Debug, Deserialize)]
+#[derive(Debug, Deserialize, ToSchema)]
 pub struct InviteToRoomRequest {
     pub invitee_id: Uuid,
 }
 
+#[utoipa::path(
+    post,
+    path = "/api/v1/rooms",
+    tag = "Rooms",
+    request_body = CreateRoomRequest,
+    responses(
+        (status = 201, description = "Room created successfully", body = PrivateRoomResponse),
+        (status = 400, description = "Validation error (e.g., invalid name or player count)"),
+        (status = 401, description = "Authentication required"),
+        (status = 500, description = "Internal server error")
+    )
+)]
 /// Create a private room
 pub async fn create_room(
     State(state): State<AppState>,
@@ -165,6 +176,19 @@ pub fn generate_room_code() -> String {
         .to_uppercase()
 }
 
+#[utoipa::path(
+    post,
+    path = "/api/v1/rooms/join",
+    tag = "Rooms",
+    request_body = JoinRoomRequest,
+    responses(
+        (status = 200, description = "Joined room successfully", body = PrivateRoomResponse),
+        (status = 400, description = "Validation error (e.g., room full, already in room)"),
+        (status = 401, description = "Incorrect room password"),
+        (status = 404, description = "Room not found"),
+        (status = 500, description = "Internal server error")
+    )
+)]
 /// Join a private room by room code
 pub async fn join_room(
     State(state): State<AppState>,
@@ -248,6 +272,20 @@ pub async fn join_room(
     Ok((StatusCode::OK, headers, Json(response)))
 }
 
+#[utoipa::path(
+    post,
+    path = "/api/v1/rooms/{id}/leave",
+    tag = "Rooms",
+    params(
+        ("id" = Uuid, Path, description = "Room ID")
+    ),
+    responses(
+        (status = 200, description = "Successfully left room"),
+        (status = 401, description = "Authentication required"),
+        (status = 404, description = "You are not in this room"),
+        (status = 500, description = "Internal server error")
+    )
+)]
 /// Leave a private room
 pub async fn leave_room(
     State(state): State<AppState>,
@@ -312,6 +350,16 @@ pub async fn leave_room(
     ))
 }
 
+#[utoipa::path(
+    get,
+    path = "/api/v1/rooms",
+    tag = "Rooms",
+    responses(
+        (status = 200, description = "List of user's rooms", body = Vec<PrivateRoomResponse>),
+        (status = 401, description = "Authentication required"),
+        (status = 500, description = "Internal server error")
+    )
+)]
 /// Get user's private rooms
 pub async fn get_user_rooms(
     State(state): State<AppState>,
@@ -354,6 +402,22 @@ pub async fn get_user_rooms(
     Ok((StatusCode::OK, headers, Json(rooms)))
 }
 
+#[utoipa::path(
+    post,
+    path = "/api/v1/rooms/{id}/invite",
+    tag = "Rooms",
+    params(
+        ("id" = Uuid, Path, description = "Room ID")
+    ),
+    request_body = InviteToRoomRequest,
+    responses(
+        (status = 201, description = "Invitation sent successfully"),
+        (status = 400, description = "Validation error (e.g., user already in room or invited)"),
+        (status = 401, description = "Only room host or participants can send invitations"),
+        (status = 404, description = "Room or user to invite not found"),
+        (status = 500, description = "Internal server error")
+    )
+)]
 /// Invite a user to a private room
 pub async fn invite_to_room(
     State(state): State<AppState>,
@@ -456,6 +520,20 @@ pub async fn invite_to_room(
     ))
 }
 
+#[utoipa::path(
+    get,
+    path = "/api/v1/rooms/{id}",
+    tag = "Rooms",
+    params(
+        ("id" = Uuid, Path, description = "Room ID")
+    ),
+    responses(
+        (status = 200, description = "Room details", body = PrivateRoomResponse),
+        (status = 401, description = "Authentication required or access denied"),
+        (status = 404, description = "Room not found"),
+        (status = 500, description = "Internal server error")
+    )
+)]
 /// Get room details
 pub async fn get_room(
     State(state): State<AppState>,

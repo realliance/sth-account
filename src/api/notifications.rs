@@ -9,6 +9,7 @@ use sea_orm::{
     QuerySelect, Set,
 };
 use serde::{Deserialize, Serialize};
+use utoipa::{IntoParams, ToSchema};
 use uuid::Uuid;
 
 use crate::{
@@ -19,7 +20,7 @@ use crate::{
 };
 use entity::notifications;
 
-#[derive(Debug, Serialize)]
+#[derive(Debug, Serialize, ToSchema)]
 pub struct NotificationResponse {
     pub id: Uuid,
     pub user_id: Uuid,
@@ -48,15 +49,17 @@ impl From<notifications::Model> for NotificationResponse {
     }
 }
 
-#[derive(Debug, Deserialize)]
+#[derive(Debug, Deserialize, IntoParams)]
 pub struct GetNotificationsQuery {
+    #[param(example = 1)]
     pub page: Option<u64>,
+    #[param(example = 20)]
     pub per_page: Option<u64>,
     pub unread_only: Option<bool>,
     pub notification_type: Option<String>,
 }
 
-#[derive(Debug, Serialize)]
+#[derive(Debug, Serialize, ToSchema)]
 pub struct NotificationsResponse {
     pub notifications: Vec<NotificationResponse>,
     pub total_count: u64,
@@ -66,12 +69,12 @@ pub struct NotificationsResponse {
     pub total_pages: u64,
 }
 
-#[derive(Debug, Deserialize)]
+#[derive(Debug, Deserialize, ToSchema)]
 pub struct MarkAsReadRequest {
     pub notification_ids: Vec<Uuid>,
 }
 
-#[derive(Debug, Deserialize)]
+#[derive(Debug, Deserialize, ToSchema)]
 pub struct CreateNotificationRequest {
     pub user_id: Uuid,
     pub r#type: String,
@@ -81,6 +84,19 @@ pub struct CreateNotificationRequest {
     pub expires_at: Option<chrono::DateTime<chrono::FixedOffset>>,
 }
 
+#[utoipa::path(
+    get,
+    path = "/api/v1/notifications",
+    tag = "Notifications",
+    params(
+        GetNotificationsQuery
+    ),
+    responses(
+        (status = 200, description = "List of notifications", body = NotificationsResponse),
+        (status = 401, description = "Authentication required"),
+        (status = 500, description = "Internal server error")
+    )
+)]
 pub async fn get_notifications(
     State(state): State<AppState>,
     auth_session: AuthSession,
@@ -147,6 +163,17 @@ pub async fn get_notifications(
     Ok((StatusCode::OK, headers, Json(response)))
 }
 
+#[utoipa::path(
+    post,
+    path = "/api/v1/notifications/mark-read",
+    tag = "Notifications",
+    request_body = MarkAsReadRequest,
+    responses(
+        (status = 200, description = "Notifications marked as read", body = serde_json::Value),
+        (status = 401, description = "Authentication required"),
+        (status = 500, description = "Internal server error")
+    )
+)]
 pub async fn mark_notifications_as_read(
     State(state): State<AppState>,
     auth_session: AuthSession,
@@ -190,6 +217,16 @@ pub async fn mark_notifications_as_read(
     ))
 }
 
+#[utoipa::path(
+    post,
+    path = "/api/v1/notifications/mark-all-read",
+    tag = "Notifications",
+    responses(
+        (status = 200, description = "All notifications marked as read", body = serde_json::Value),
+        (status = 401, description = "Authentication required"),
+        (status = 500, description = "Internal server error")
+    )
+)]
 pub async fn mark_all_notifications_as_read(
     State(state): State<AppState>,
     auth_session: AuthSession,
@@ -222,6 +259,21 @@ pub async fn mark_all_notifications_as_read(
     ))
 }
 
+#[utoipa::path(
+    delete,
+    path = "/api/v1/notifications/{id}",
+    tag = "Notifications",
+    params(
+        ("id" = Uuid, Path, description = "Notification ID")
+    ),
+    responses(
+        (status = 204, description = "Notification deleted successfully"),
+        (status = 401, description = "Authentication required"),
+        (status = 403, description = "Access denied"),
+        (status = 404, description = "Notification not found"),
+        (status = 500, description = "Internal server error")
+    )
+)]
 pub async fn delete_notification(
     State(state): State<AppState>,
     auth_session: AuthSession,
@@ -252,6 +304,16 @@ pub async fn delete_notification(
     Ok((StatusCode::NO_CONTENT, headers))
 }
 
+#[utoipa::path(
+    get,
+    path = "/api/v1/notifications/summary",
+    tag = "Notifications",
+    responses(
+        (status = 200, description = "Notification summary", body = serde_json::Value),
+        (status = 401, description = "Authentication required"),
+        (status = 500, description = "Internal server error")
+    )
+)]
 pub async fn get_notification_summary(
     State(state): State<AppState>,
     auth_session: AuthSession,
@@ -312,6 +374,18 @@ pub async fn get_notification_summary(
     ))
 }
 
+#[utoipa::path(
+    post,
+    path = "/api/v1/admin/notifications",
+    tag = "Admin",
+    request_body = CreateNotificationRequest,
+    responses(
+        (status = 201, description = "Notification created successfully", body = NotificationResponse),
+        (status = 401, description = "Authentication required"),
+        (status = 403, description = "Access denied"),
+        (status = 500, description = "Internal server error")
+    )
+)]
 // Admin endpoint to create notifications (for system announcements, etc.)
 pub async fn create_notification(
     State(state): State<AppState>,

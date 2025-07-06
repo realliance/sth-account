@@ -6,6 +6,7 @@ use axum::{
 use chrono::Utc;
 use sea_orm::{ActiveModelTrait, ColumnTrait, EntityTrait, QueryFilter, Set};
 use serde::{Deserialize, Serialize};
+use utoipa::ToSchema;
 use uuid::Uuid;
 
 use crate::{
@@ -16,7 +17,7 @@ use crate::{
 };
 use entity::{bot, lobby_pool, queue};
 
-#[derive(Debug, Serialize)]
+#[derive(Debug, Serialize, ToSchema)]
 pub struct QueueResponse {
     pub id: Uuid,
     pub participant_type: String,
@@ -41,19 +42,32 @@ impl From<queue::Model> for QueueResponse {
     }
 }
 
-#[derive(Debug, Deserialize)]
+#[derive(Debug, Deserialize, ToSchema)]
 pub struct JoinQueueRequest {
     pub lobby_id: Uuid,
     pub preferred_mmr_range: Option<String>,
 }
 
-#[derive(Debug, Deserialize)]
+#[derive(Debug, Deserialize, ToSchema)]
 pub struct JoinQueueAsBotRequest {
     pub bot_id: Uuid,
     pub lobby_id: Uuid,
     pub preferred_mmr_range: Option<String>,
 }
 
+#[utoipa::path(
+    post,
+    path = "/api/v1/queue/join",
+    tag = "Matchmaking",
+    request_body = JoinQueueRequest,
+    responses(
+        (status = 201, description = "Joined queue successfully", body = QueueResponse),
+        (status = 400, description = "Bad request (e.g., already in queue, lobby not active)"),
+        (status = 401, description = "Authentication required"),
+        (status = 404, description = "Lobby not found"),
+        (status = 500, description = "Internal server error")
+    )
+)]
 /// Join matchmaking queue as a human player
 pub async fn join_queue(
     State(state): State<AppState>,
@@ -123,6 +137,20 @@ pub async fn join_queue(
     Ok((StatusCode::CREATED, headers, Json(queue_response)))
 }
 
+#[utoipa::path(
+    post,
+    path = "/api/v1/queue/join-bot",
+    tag = "Matchmaking",
+    request_body = JoinQueueAsBotRequest,
+    responses(
+        (status = 201, description = "Bot joined queue successfully", body = QueueResponse),
+        (status = 400, description = "Bad request (e.g., bot already in queue, lobby not active, bot not live)"),
+        (status = 401, description = "Authentication required"),
+        (status = 403, description = "Access denied"),
+        (status = 404, description = "Bot or lobby not found"),
+        (status = 500, description = "Internal server error")
+    )
+)]
 /// Join matchmaking queue as a bot
 pub async fn join_queue_as_bot(
     State(state): State<AppState>,
@@ -206,6 +234,22 @@ pub async fn join_queue_as_bot(
     Ok((StatusCode::CREATED, headers, Json(queue_response)))
 }
 
+#[utoipa::path(
+    delete,
+    path = "/api/v1/queue/{id}",
+    tag = "Matchmaking",
+    params(
+        ("id" = Uuid, Path, description = "Queue entry ID")
+    ),
+    responses(
+        (status = 200, description = "Left queue successfully"),
+        (status = 400, description = "Cannot leave queue (e.g., not in waiting status)"),
+        (status = 401, description = "Authentication required"),
+        (status = 403, description = "Access denied"),
+        (status = 404, description = "Queue entry not found"),
+        (status = 500, description = "Internal server error")
+    )
+)]
 /// Leave matchmaking queue
 pub async fn leave_queue(
     State(state): State<AppState>,
@@ -276,6 +320,16 @@ pub async fn leave_queue(
     ))
 }
 
+#[utoipa::path(
+    get,
+    path = "/api/v1/queue/status",
+    tag = "Matchmaking",
+    responses(
+        (status = 200, description = "Current queue status for user", body = Vec<QueueResponse>),
+        (status = 401, description = "Authentication required"),
+        (status = 500, description = "Internal server error")
+    )
+)]
 /// Get current queue status for a user
 pub async fn get_queue_status(
     State(state): State<AppState>,
@@ -318,6 +372,21 @@ pub async fn get_queue_status(
     Ok((StatusCode::OK, headers, Json(queue_responses)))
 }
 
+#[utoipa::path(
+    get,
+    path = "/api/v1/queue/lobby/{id}/stats",
+    tag = "Matchmaking",
+    params(
+        ("id" = Uuid, Path, description = "Lobby ID")
+    ),
+    responses(
+        (status = 200, description = "Lobby queue statistics retrieved successfully", body = serde_json::Value),
+        (status = 401, description = "Authentication required"),
+        (status = 403, description = "Access denied"),
+        (status = 404, description = "Lobby not found"),
+        (status = 500, description = "Internal server error")
+    )
+)]
 /// Get queue statistics for a lobby (Admin only)
 pub async fn get_lobby_queue_stats(
     State(state): State<AppState>,

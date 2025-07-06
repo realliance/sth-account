@@ -5,16 +5,13 @@ use axum::{
 };
 use sea_orm::{ColumnTrait, EntityTrait, PaginatorTrait, QueryFilter, QueryOrder, QuerySelect};
 use serde::{Deserialize, Serialize};
+use utoipa::{IntoParams, ToSchema};
 use uuid::Uuid;
 
-use crate::{
-    auth::AuthSession,
-    error::{AppError, Result},
-    service::AppState,
-};
+use crate::{auth::AuthSession, error::{AppError, Result}, service::AppState};
 use entity::{bot, bot_statistics, r#match, user, user_statistics};
 
-#[derive(Debug, Serialize)]
+#[derive(Debug, Serialize, ToSchema)]
 pub struct MatchResponse {
     pub id: Uuid,
     pub lobby_id: Uuid,
@@ -23,7 +20,7 @@ pub struct MatchResponse {
     pub participants: Vec<MatchParticipant>,
 }
 
-#[derive(Debug, Serialize)]
+#[derive(Debug, Serialize, ToSchema)]
 pub struct MatchParticipant {
     pub participant_type: String, // "Human" or "Bot"
     pub participant_id: Uuid,
@@ -92,14 +89,16 @@ fn calculate_placement(score: Option<i32>) -> Option<i32> {
     score.map(|_| 0)
 }
 
-#[derive(Debug, Deserialize)]
+#[derive(Debug, Deserialize, IntoParams)]
 pub struct MatchQuery {
+    #[param(example = 50)]
     pub limit: Option<u64>,
+    #[param(example = 0)]
     pub offset: Option<u64>,
     pub lobby_id: Option<Uuid>,
 }
 
-#[derive(Debug, Serialize)]
+#[derive(Debug, Serialize, ToSchema)]
 pub struct MatchHistoryResponse {
     pub matches: Vec<MatchResponse>,
     pub total_count: u64,
@@ -107,7 +106,7 @@ pub struct MatchHistoryResponse {
     pub offset: u64,
 }
 
-#[derive(Debug, Serialize)]
+#[derive(Debug, Serialize, ToSchema)]
 pub struct UserStatsResponse {
     pub user_id: Uuid,
     pub total_games: u64,
@@ -120,7 +119,7 @@ pub struct UserStatsResponse {
     pub peak_mmr: i32,
 }
 
-#[derive(Debug, Serialize)]
+#[derive(Debug, Serialize, ToSchema)]
 pub struct BotStatsResponse {
     pub bot_id: Uuid,
     pub total_games: u64,
@@ -133,6 +132,21 @@ pub struct BotStatsResponse {
     pub peak_mmr: i32,
 }
 
+#[utoipa::path(
+    get,
+    path = "/api/v1/matches/user/{id}",
+    tag = "Matches",
+    params(
+        MatchQuery,
+        ("id" = Uuid, Path, description = "User ID")
+    ),
+    responses(
+        (status = 200, description = "User's match history", body = MatchHistoryResponse),
+        (status = 401, description = "Authentication required"),
+        (status = 403, description = "Access denied"),
+        (status = 500, description = "Internal server error")
+    )
+)]
 /// Get match history for a user
 pub async fn get_user_match_history(
     State(state): State<AppState>,
@@ -194,6 +208,22 @@ pub async fn get_user_match_history(
     Ok((StatusCode::OK, headers, Json(response)))
 }
 
+#[utoipa::path(
+    get,
+    path = "/api/v1/matches/bot/{id}",
+    tag = "Matches",
+    params(
+        MatchQuery,
+        ("id" = Uuid, Path, description = "Bot ID")
+    ),
+    responses(
+        (status = 200, description = "Bot's match history", body = MatchHistoryResponse),
+        (status = 401, description = "Authentication required"),
+        (status = 403, description = "Access denied"),
+        (status = 404, description = "Bot not found"),
+        (status = 500, description = "Internal server error")
+    )
+)]
 /// Get match history for a bot
 pub async fn get_bot_match_history(
     State(state): State<AppState>,
@@ -260,6 +290,21 @@ pub async fn get_bot_match_history(
     Ok((StatusCode::OK, headers, Json(response)))
 }
 
+#[utoipa::path(
+    get,
+    path = "/api/v1/matches/{id}",
+    tag = "Matches",
+    params(
+        ("id" = Uuid, Path, description = "Match ID")
+    ),
+    responses(
+        (status = 200, description = "Match details", body = MatchResponse),
+        (status = 401, description = "Authentication required"),
+        (status = 403, description = "Access denied"),
+        (status = 404, description = "Match not found"),
+        (status = 500, description = "Internal server error")
+    )
+)]
 /// Get a specific match details
 pub async fn get_match(
     State(state): State<AppState>,
@@ -310,6 +355,21 @@ pub async fn get_match(
     Ok((StatusCode::OK, headers, Json(match_response)))
 }
 
+#[utoipa::path(
+    get,
+    path = "/api/v1/stats/user/{id}",
+    tag = "Statistics",
+    params(
+        ("id" = Uuid, Path, description = "User ID")
+    ),
+    responses(
+        (status = 200, description = "User statistics", body = UserStatsResponse),
+        (status = 401, description = "Authentication required"),
+        (status = 403, description = "Access denied"),
+        (status = 404, description = "User not found"),
+        (status = 500, description = "Internal server error")
+    )
+)]
 /// Get user statistics
 pub async fn get_user_stats(
     State(state): State<AppState>,
@@ -407,6 +467,21 @@ pub async fn get_user_stats(
     Ok((StatusCode::OK, headers, Json(stats)))
 }
 
+#[utoipa::path(
+    get,
+    path = "/api/v1/stats/bot/{id}",
+    tag = "Statistics",
+    params(
+        ("id" = Uuid, Path, description = "Bot ID")
+    ),
+    responses(
+        (status = 200, description = "Bot statistics", body = BotStatsResponse),
+        (status = 401, description = "Authentication required"),
+        (status = 403, description = "Access denied"),
+        (status = 404, description = "Bot not found"),
+        (status = 500, description = "Internal server error")
+    )
+)]
 /// Get bot statistics
 pub async fn get_bot_stats(
     State(state): State<AppState>,

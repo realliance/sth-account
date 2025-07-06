@@ -10,14 +10,10 @@ use sea_orm::{
 };
 use serde::{Deserialize, Serialize};
 use std::net::SocketAddr;
+use utoipa::{IntoParams, ToSchema};
 use uuid::Uuid;
 
-use crate::{
-    api::add_rate_limit_headers,
-    auth::AuthSession,
-    error::{AppError, Result},
-    service::AppState,
-};
+use crate::{api::add_rate_limit_headers, auth::AuthSession, error::{AppError, Result}, service::AppState};
 use entity::{audit_log, notifications, report, system_configuration, user};
 
 fn extract_ip_address(
@@ -49,7 +45,7 @@ fn extract_ip_address(
     "unknown".to_string()
 }
 
-#[derive(Debug, Serialize)]
+#[derive(Debug, Serialize, ToSchema)]
 pub struct ReportResponse {
     pub id: Uuid,
     pub author_id: Uuid,
@@ -66,7 +62,7 @@ pub struct ReportResponse {
     pub author_info: Option<UserInfo>,
 }
 
-#[derive(Debug, Serialize)]
+#[derive(Debug, Serialize, ToSchema)]
 pub struct UserInfo {
     pub id: Uuid,
     pub username: String,
@@ -74,7 +70,7 @@ pub struct UserInfo {
     pub account_status: String,
 }
 
-#[derive(Debug, Serialize)]
+#[derive(Debug, Serialize, ToSchema)]
 pub struct AuditLogResponse {
     pub id: Uuid,
     pub user_id: Uuid,
@@ -87,7 +83,7 @@ pub struct AuditLogResponse {
     pub moderator_info: Option<UserInfo>,
 }
 
-#[derive(Debug, Deserialize)]
+#[derive(Debug, Deserialize, IntoParams)]
 pub struct GetReportsQuery {
     pub page: Option<u64>,
     pub per_page: Option<u64>,
@@ -96,14 +92,14 @@ pub struct GetReportsQuery {
     pub offense_type: Option<String>,
 }
 
-#[derive(Debug, Deserialize)]
+#[derive(Debug, Deserialize, ToSchema)]
 pub struct UpdateReportRequest {
     pub status: String,
     pub write_up: Option<String>,
     pub severity: Option<String>,
 }
 
-#[derive(Debug, Deserialize)]
+#[derive(Debug, Deserialize, ToSchema)]
 pub struct UserModerationRequest {
     pub action: String, // "suspend", "ban", "activate", "change_role"
     pub reason: String,
@@ -111,14 +107,14 @@ pub struct UserModerationRequest {
     pub new_role: Option<String>,   // For role changes
 }
 
-#[derive(Debug, Deserialize)]
+#[derive(Debug, Deserialize, ToSchema)]
 pub struct SystemConfigRequest {
     pub key: String,
     pub value: serde_json::Value,
     pub description: Option<String>,
 }
 
-#[derive(Debug, Serialize)]
+#[derive(Debug, Serialize, ToSchema)]
 pub struct SystemConfigResponse {
     pub id: Uuid,
     pub key: String,
@@ -131,6 +127,20 @@ pub struct SystemConfigResponse {
 
 // Report management endpoints
 
+#[utoipa::path(
+    get,
+    path = "/api/v1/admin/reports",
+    tag = "Admin",
+    params(
+        GetReportsQuery
+    ),
+    responses(
+        (status = 200, description = "List of reports", body = serde_json::Value),
+        (status = 401, description = "Authentication required"),
+        (status = 403, description = "Access denied"),
+        (status = 500, description = "Internal server error")
+    )
+)]
 pub async fn get_reports(
     State(state): State<AppState>,
     auth_session: AuthSession,
@@ -219,6 +229,22 @@ pub async fn get_reports(
     ))
 }
 
+#[utoipa::path(
+    patch,
+    path = "/api/v1/admin/reports/{id}",
+    tag = "Admin",
+    params(
+        ("id" = Uuid, Path, description = "Report ID")
+    ),
+    request_body = UpdateReportRequest,
+    responses(
+        (status = 200, description = "Report updated successfully", body = ReportResponse),
+        (status = 401, description = "Authentication required"),
+        (status = 403, description = "Access denied"),
+        (status = 404, description = "Report not found"),
+        (status = 500, description = "Internal server error")
+    )
+)]
 pub async fn update_report(
     State(state): State<AppState>,
     auth_session: AuthSession,
@@ -312,6 +338,23 @@ pub async fn update_report(
 
 // User moderation endpoints
 
+#[utoipa::path(
+    post,
+    path = "/api/v1/admin/users/{id}/moderate",
+    tag = "Admin",
+    params(
+        ("id" = Uuid, Path, description = "User ID to moderate")
+    ),
+    request_body = UserModerationRequest,
+    responses(
+        (status = 200, description = "User moderated successfully", body = serde_json::Value),
+        (status = 400, description = "Bad request (e.g., invalid action)"),
+        (status = 401, description = "Authentication required"),
+        (status = 403, description = "Access denied"),
+        (status = 404, description = "User not found"),
+        (status = 500, description = "Internal server error")
+    )
+)]
 pub async fn moderate_user(
     State(state): State<AppState>,
     auth_session: AuthSession,
@@ -418,6 +461,17 @@ pub async fn moderate_user(
 
 // System configuration endpoints
 
+#[utoipa::path(
+    get,
+    path = "/api/v1/admin/config",
+    tag = "Admin",
+    responses(
+        (status = 200, description = "List of system configuration settings", body = Vec<SystemConfigResponse>),
+        (status = 401, description = "Authentication required"),
+        (status = 403, description = "Access denied"),
+        (status = 500, description = "Internal server error")
+    )
+)]
 pub async fn get_system_config(
     State(state): State<AppState>,
     auth_session: AuthSession,
@@ -467,6 +521,18 @@ pub async fn get_system_config(
     Ok((StatusCode::OK, headers, Json(responses)))
 }
 
+#[utoipa::path(
+    post,
+    path = "/api/v1/admin/config",
+    tag = "Admin",
+    request_body = SystemConfigRequest,
+    responses(
+        (status = 200, description = "System configuration updated successfully", body = SystemConfigResponse),
+        (status = 401, description = "Authentication required"),
+        (status = 403, description = "Access denied"),
+        (status = 500, description = "Internal server error")
+    )
+)]
 pub async fn update_system_config(
     State(state): State<AppState>,
     auth_session: AuthSession,
@@ -554,6 +620,20 @@ pub async fn update_system_config(
     Ok((StatusCode::OK, headers, Json(response)))
 }
 
+#[utoipa::path(
+    get,
+    path = "/api/v1/admin/audit-logs",
+    tag = "Admin",
+    params(
+        GetReportsQuery
+    ),
+    responses(
+        (status = 200, description = "List of audit logs", body = serde_json::Value),
+        (status = 401, description = "Authentication required"),
+        (status = 403, description = "Access denied"),
+        (status = 500, description = "Internal server error")
+    )
+)]
 pub async fn get_audit_logs(
     State(state): State<AppState>,
     auth_session: AuthSession,

@@ -125,88 +125,67 @@ pub async fn run_service() -> Result<()> {
         bots::delete_bot
     ))
     .routes(routes!(bots::get_user_bots))
-    // Lobby routes
-    .route("/lobbies", get(lobbies::get_lobbies))
-    .route("/lobbies", post(lobbies::create_lobby))
-    .route("/lobbies/all", get(lobbies::get_all_lobbies))
-    .route("/lobbies/{id}", get(lobbies::get_lobby))
-    .route("/lobbies/{id}", patch(lobbies::update_lobby))
-    .route("/lobbies/{id}", delete(lobbies::delete_lobby))
+    .routes(routes!(lobbies::get_all_lobbies))
+    .routes(routes!(lobbies::get_lobbies))
+    .routes(routes!(
+        lobbies::create_lobby,
+        lobbies::get_lobby,
+        lobbies::update_lobby,
+        lobbies::delete_lobby
+    ))
     // Matchmaking queue routes
-    .route("/queue/join", post(matchmaking::join_queue))
-    .route("/queue/join-bot", post(matchmaking::join_queue_as_bot))
-    .route("/queue/{id}", delete(matchmaking::leave_queue))
-    .route("/queue/status", get(matchmaking::get_queue_status))
-    .route(
-        "/queue/lobby/{id}/stats",
-        get(matchmaking::get_lobby_queue_stats),
-    )
+    .routes(routes!(matchmaking::join_queue))
+    .routes(routes!(matchmaking::join_queue_as_bot))
+    .routes(routes!(matchmaking::leave_queue))
+    .routes(routes!(matchmaking::get_queue_status))
+    .routes(routes!(matchmaking::get_lobby_queue_stats))
     // Private room routes
-    .route("/rooms", get(rooms::get_user_rooms))
-    .route("/rooms", post(rooms::create_room))
-    .route("/rooms/join", post(rooms::join_room))
-    .route("/rooms/{id}", get(rooms::get_room))
-    .route("/rooms/{id}/leave", post(rooms::leave_room))
-    .route("/rooms/{id}/invite", post(rooms::invite_to_room))
+    .routes(routes!(rooms::create_room))
+    .routes(routes!(rooms::join_room))
+    .routes(routes!(rooms::leave_room))
+    .routes(routes!(rooms::get_user_rooms))
+    .routes(routes!(rooms::invite_to_room))
+    .routes(routes!(rooms::get_room))
     // Match and statistics routes
-    .route("/matches/user/{id}", get(matches::get_user_match_history))
-    .route("/matches/bot/{id}", get(matches::get_bot_match_history))
-    .route("/matches/{id}", get(matches::get_match))
-    .route("/stats/user/{id}", get(matches::get_user_stats))
-    .route("/stats/bot/{id}", get(matches::get_bot_stats))
+    .routes(routes!(matches::get_user_match_history))
+    .routes(routes!(matches::get_bot_match_history))
+    .routes(routes!(matches::get_match))
+    .routes(routes!(matches::get_user_stats))
+    .routes(routes!(matches::get_bot_stats))
     // Friend system routes
-    .route("/friends", get(friends::get_friends))
-    .route("/friends/requests", post(friends::send_friend_request))
-    .route(
-        "/friends/requests",
-        get(friends::get_pending_friend_requests),
-    )
-    .route(
-        "/friends/requests/{id}",
-        patch(friends::respond_to_friend_request),
-    )
-    .route("/friends/{id}", delete(friends::remove_friend))
+    .routes(routes!(friends::get_friends, friends::remove_friend))
+    .routes(routes!(
+        friends::send_friend_request,
+        friends::get_pending_friend_requests,
+        friends::respond_to_friend_request
+    ))
     // Notification routes
-    .route("/notifications", get(notifications::get_notifications))
-    .route(
-        "/notifications/mark-read",
-        post(notifications::mark_notifications_as_read),
-    )
-    .route(
-        "/notifications/mark-all-read",
-        post(notifications::mark_all_notifications_as_read),
-    )
-    .route(
-        "/notifications/summary",
-        get(notifications::get_notification_summary),
-    )
-    .route(
-        "/notifications/{id}",
-        delete(notifications::delete_notification),
-    )
+    .routes(routes!(
+        notifications::get_notifications,
+        notifications::create_notification,
+    ))
+    .routes(routes!(notifications::mark_notifications_as_read))
+    .routes(routes!(notifications::mark_all_notifications_as_read))
+    .routes(routes!(notifications::get_notification_summary))
+    .routes(routes!(notifications::delete_notification))
     // Data export routes
-    .route("/exports", post(exports::request_data_export))
-    .route("/exports", get(exports::get_export_requests))
-    .route("/exports/{id}/download", get(exports::download_export))
-    .route(
-        "/exports/{id}/cancel",
-        delete(exports::cancel_export_request),
-    )
+    .routes(routes!(
+        exports::request_data_export,
+        exports::get_export_requests,
+        exports::cancel_export_request
+    ))
+    .routes(routes!(exports::download_export, exports::complete_export))
     // Admin routes
-    .route("/admin/reports", get(admin::get_reports))
-    .route("/admin/reports/{id}", patch(admin::update_report))
-    .route("/admin/users/{id}/moderate", post(admin::moderate_user))
-    .route("/admin/config", get(admin::get_system_config))
-    .route("/admin/config", post(admin::update_system_config))
-    .route("/admin/audit-logs", get(admin::get_audit_logs))
-    .route(
-        "/admin/notifications",
-        post(notifications::create_notification),
-    )
-    .route(
-        "/admin/exports/{id}/complete",
-        post(exports::complete_export),
-    )
+    .routes(routes!(
+        admin::get_reports,
+        admin::update_report,
+        admin::moderate_user,
+    ))
+    .routes(routes!(
+        admin::get_system_config,
+        admin::update_system_config,
+    ))
+    .routes(routes!(admin::get_audit_logs,))
     .with_state(state.clone());
 
     // Extract OpenAPI spec from the router

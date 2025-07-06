@@ -5,6 +5,7 @@ use axum::{
 };
 use sea_orm::{ActiveModelTrait, ColumnTrait, EntityTrait, QueryFilter, Set};
 use serde::{Deserialize, Serialize};
+use utoipa::ToSchema;
 use uuid::Uuid;
 
 use crate::{
@@ -14,7 +15,7 @@ use crate::{
 };
 use entity::lobby_pool;
 
-#[derive(Debug, Serialize)]
+#[derive(Debug, Serialize, ToSchema)]
 pub struct LobbyResponse {
     pub id: Uuid,
     pub name: String,
@@ -35,14 +36,14 @@ impl From<lobby_pool::Model> for LobbyResponse {
     }
 }
 
-#[derive(Debug, Deserialize)]
+#[derive(Debug, Deserialize, ToSchema)]
 pub struct CreateLobbyRequest {
     pub name: String,
     pub description: Option<String>,
     pub preset: LobbyPreset,
 }
 
-#[derive(Debug, Deserialize)]
+#[derive(Debug, Deserialize, ToSchema)]
 pub struct UpdateLobbyRequest {
     pub name: Option<String>,
     pub description: Option<String>,
@@ -50,7 +51,7 @@ pub struct UpdateLobbyRequest {
     pub active: Option<bool>,
 }
 
-#[derive(Debug, Serialize, Deserialize)]
+#[derive(Debug, Serialize, Deserialize, ToSchema)]
 pub enum LobbyPreset {
     GeneralFourPlayer,
     AllBotsFourPlayer,
@@ -74,6 +75,19 @@ impl From<String> for LobbyPreset {
     }
 }
 
+#[utoipa::path(
+    post,
+    path = "/api/v1/lobbies",
+    tag = "Lobbies",
+    request_body = CreateLobbyRequest,
+    responses(
+        (status = 201, description = "Lobby created successfully", body = LobbyResponse),
+        (status = 400, description = "Lobby name already exists"),
+        (status = 401, description = "Authentication required"),
+        (status = 403, description = "Only admins can create lobbies"),
+        (status = 500, description = "Internal server error")
+    )
+)]
 /// Create a new lobby (Admin only)
 pub async fn create_lobby(
     State(state): State<AppState>,
@@ -118,6 +132,15 @@ pub async fn create_lobby(
     Ok((StatusCode::CREATED, headers, Json(lobby_response)))
 }
 
+#[utoipa::path(
+    get,
+    path = "/api/v1/my-lobbies",
+    tag = "Lobbies",
+    responses(
+        (status = 200, description = "Active lobbies retrieved successfully", body = Vec<LobbyResponse>),
+        (status = 500, description = "Internal server error")
+    )
+)]
 /// Get all lobbies
 pub async fn get_lobbies(
     State(state): State<AppState>,
@@ -137,6 +160,17 @@ pub async fn get_lobbies(
     Ok((StatusCode::OK, headers, Json(lobby_responses)))
 }
 
+#[utoipa::path(
+    get,
+    path = "/api/v1/all-lobbies",
+    tag = "Lobbies",
+    responses(
+        (status = 200, description = "All lobbies retrieved successfully", body = Vec<LobbyResponse>),
+        (status = 401, description = "Authentication required"),
+        (status = 403, description = "Only admins can view all lobbies"),
+        (status = 500, description = "Internal server error")
+    )
+)]
 /// Get all lobbies (Admin view - includes inactive)
 pub async fn get_all_lobbies(
     State(state): State<AppState>,
@@ -164,6 +198,19 @@ pub async fn get_all_lobbies(
     Ok((StatusCode::OK, headers, Json(lobby_responses)))
 }
 
+#[utoipa::path(
+    get,
+    path = "/api/v1/lobbies/{id}",
+    tag = "Lobbies",
+    params(
+        ("id" = Uuid, Path, description = "Lobby ID")
+    ),
+    responses(
+        (status = 200, description = "Lobby found", body = LobbyResponse),
+        (status = 404, description = "Lobby not found"),
+        (status = 500, description = "Internal server error")
+    )
+)]
 /// Get a specific lobby
 pub async fn get_lobby(
     State(state): State<AppState>,
@@ -181,6 +228,23 @@ pub async fn get_lobby(
     Ok((StatusCode::OK, headers, Json(lobby_response)))
 }
 
+#[utoipa::path(
+    patch,
+    path = "/api/v1/lobbies/{id}",
+    tag = "Lobbies",
+    params(
+        ("id" = Uuid, Path, description = "Lobby ID")
+    ),
+    request_body = UpdateLobbyRequest,
+    responses(
+        (status = 200, description = "Lobby updated successfully", body = LobbyResponse),
+        (status = 400, description = "Lobby name already exists"),
+        (status = 401, description = "Authentication required"),
+        (status = 403, description = "Only admins can update lobbies"),
+        (status = 404, description = "Lobby not found"),
+        (status = 500, description = "Internal server error")
+    )
+)]
 /// Update a lobby (Admin only)
 pub async fn update_lobby(
     State(state): State<AppState>,
@@ -238,6 +302,21 @@ pub async fn update_lobby(
     Ok((StatusCode::OK, headers, Json(lobby_response)))
 }
 
+#[utoipa::path(
+    delete,
+    path = "/api/v1/lobbies/{id}",
+    tag = "Lobbies",
+    params(
+        ("id" = Uuid, Path, description = "Lobby ID")
+    ),
+    responses(
+        (status = 200, description = "Lobby deactivated successfully"),
+        (status = 401, description = "Authentication required"),
+        (status = 403, description = "Only admins can delete lobbies"),
+        (status = 404, description = "Lobby not found"),
+        (status = 500, description = "Internal server error")
+    )
+)]
 /// Delete a lobby (Admin only) - Soft delete by setting active = false
 pub async fn delete_lobby(
     State(state): State<AppState>,

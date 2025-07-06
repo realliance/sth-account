@@ -9,6 +9,7 @@ use sea_orm::{
     QuerySelect, Set,
 };
 use serde::{Deserialize, Serialize};
+use utoipa::{IntoParams, ToSchema};
 use uuid::Uuid;
 
 use crate::{
@@ -22,7 +23,7 @@ use entity::{
     user_statistics,
 };
 
-#[derive(Debug, Serialize)]
+#[derive(Debug, Serialize, ToSchema)]
 pub struct DataExportResponse {
     pub id: Uuid,
     pub user_id: Uuid,
@@ -49,19 +50,20 @@ impl From<data_export_requests::Model> for DataExportResponse {
     }
 }
 
-#[derive(Debug, Deserialize)]
+#[derive(Debug, Deserialize, ToSchema)]
 pub struct RequestDataExportRequest {
+    #[schema(example = "FullExport")]
     pub export_type: String, // "UserData", "MatchHistory", "BotStatistics", "FullExport"
 }
 
-#[derive(Debug, Deserialize)]
+#[derive(Debug, Deserialize, IntoParams)]
 pub struct GetExportsQuery {
     pub page: Option<u64>,
     pub per_page: Option<u64>,
     pub status: Option<String>,
 }
 
-#[derive(Debug, Serialize)]
+#[derive(Debug, Serialize, ToSchema)]
 pub struct UserDataExport {
     pub user_profile: UserProfileExport,
     pub statistics: Option<UserStatisticsExport>,
@@ -72,7 +74,7 @@ pub struct UserDataExport {
     pub export_metadata: ExportMetadata,
 }
 
-#[derive(Debug, Serialize)]
+#[derive(Debug, Serialize, ToSchema)]
 pub struct UserProfileExport {
     pub id: Uuid,
     pub username: String,
@@ -87,7 +89,7 @@ pub struct UserProfileExport {
     pub last_active_at: Option<chrono::DateTime<chrono::FixedOffset>>,
 }
 
-#[derive(Debug, Serialize)]
+#[derive(Debug, Serialize, ToSchema)]
 pub struct UserStatisticsExport {
     pub total_games: i32,
     pub wins: i32,
@@ -100,14 +102,14 @@ pub struct UserStatisticsExport {
     pub last_game_at: Option<chrono::DateTime<chrono::FixedOffset>>,
 }
 
-#[derive(Debug, Serialize)]
+#[derive(Debug, Serialize, ToSchema)]
 pub struct FriendExport {
     pub friend_username: String,
     pub friendship_status: String,
     pub created_at: chrono::DateTime<chrono::FixedOffset>,
 }
 
-#[derive(Debug, Serialize)]
+#[derive(Debug, Serialize, ToSchema)]
 pub struct NotificationExport {
     pub r#type: String,
     pub title: String,
@@ -116,7 +118,7 @@ pub struct NotificationExport {
     pub created_at: chrono::DateTime<chrono::FixedOffset>,
 }
 
-#[derive(Debug, Serialize)]
+#[derive(Debug, Serialize, ToSchema)]
 pub struct BotExport {
     pub name: String,
     pub source_code: Option<String>,
@@ -127,7 +129,7 @@ pub struct BotExport {
     pub created_at: chrono::DateTime<chrono::FixedOffset>,
 }
 
-#[derive(Debug, Serialize)]
+#[derive(Debug, Serialize, ToSchema)]
 pub struct MatchExport {
     pub match_id: Uuid,
     pub lobby_name: String,
@@ -137,7 +139,7 @@ pub struct MatchExport {
     pub participant_mmr_delta: Option<i32>,
 }
 
-#[derive(Debug, Serialize)]
+#[derive(Debug, Serialize, ToSchema)]
 pub struct ExportMetadata {
     pub export_date: chrono::DateTime<chrono::Utc>,
     pub export_type: String,
@@ -145,6 +147,18 @@ pub struct ExportMetadata {
     pub contact_info: String,
 }
 
+#[utoipa::path(
+    post,
+    path = "/api/v1/exports",
+    tag = "Exports",
+    request_body = RequestDataExportRequest,
+    responses(
+        (status = 201, description = "Data export requested successfully", body = DataExportResponse),
+        (status = 400, description = "Bad request (e.g., invalid type, pending request exists)"),
+        (status = 401, description = "Authentication required"),
+        (status = 500, description = "Internal server error")
+    )
+)]
 pub async fn request_data_export(
     State(state): State<AppState>,
     auth_session: AuthSession,
@@ -200,6 +214,19 @@ pub async fn request_data_export(
     ))
 }
 
+#[utoipa::path(
+    get,
+    path = "/api/v1/exports",
+    tag = "Exports",
+    params(
+        GetExportsQuery
+    ),
+    responses(
+        (status = 200, description = "List of user's export requests", body = serde_json::Value),
+        (status = 401, description = "Authentication required"),
+        (status = 500, description = "Internal server error")
+    )
+)]
 pub async fn get_export_requests(
     State(state): State<AppState>,
     auth_session: AuthSession,
@@ -248,6 +275,22 @@ pub async fn get_export_requests(
     ))
 }
 
+#[utoipa::path(
+    get,
+    path = "/api/v1/exports/{id}/download",
+    tag = "Exports",
+    params(
+        ("id" = Uuid, Path, description = "Export ID")
+    ),
+    responses(
+        (status = 200, description = "Export data", body = UserDataExport),
+        (status = 400, description = "Bad request (e.g., not completed, expired)"),
+        (status = 401, description = "Authentication required"),
+        (status = 403, description = "Access denied"),
+        (status = 404, description = "Export request not found"),
+        (status = 500, description = "Internal server error")
+    )
+)]
 pub async fn download_export(
     State(state): State<AppState>,
     auth_session: AuthSession,
@@ -292,6 +335,22 @@ pub async fn download_export(
     Ok((StatusCode::OK, headers, Json(export_data)))
 }
 
+#[utoipa::path(
+    delete,
+    path = "/api/v1/exports/{id}/cancel",
+    tag = "Exports",
+    params(
+        ("id" = Uuid, Path, description = "Export ID")
+    ),
+    responses(
+        (status = 204, description = "Export request cancelled successfully"),
+        (status = 400, description = "Bad request (e.g., already completed)"),
+        (status = 401, description = "Authentication required"),
+        (status = 403, description = "Access denied"),
+        (status = 404, description = "Export request not found"),
+        (status = 500, description = "Internal server error")
+    )
+)]
 pub async fn cancel_export_request(
     State(state): State<AppState>,
     auth_session: AuthSession,
@@ -516,6 +575,21 @@ async fn generate_user_data_export(
     })
 }
 
+#[utoipa::path(
+    post,
+    path = "/api/v1/admin/exports/{id}/complete",
+    tag = "Admin",
+    params(
+        ("id" = Uuid, Path, description = "Export ID")
+    ),
+    responses(
+        (status = 200, description = "Export marked as completed", body = DataExportResponse),
+        (status = 401, description = "Authentication required"),
+        (status = 403, description = "Access denied"),
+        (status = 404, description = "Export request not found"),
+        (status = 500, description = "Internal server error")
+    )
+)]
 // Admin endpoint to mark export as completed (would typically be called by worker)
 pub async fn complete_export(
     State(state): State<AppState>,

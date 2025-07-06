@@ -6,14 +6,10 @@ use axum::{
 use chrono::Utc;
 use sea_orm::{ActiveModelTrait, ColumnTrait, EntityTrait, QueryFilter, Set};
 use serde::{Deserialize, Serialize};
+use utoipa::ToSchema;
 use uuid::Uuid;
 
-use crate::{
-    api::add_rate_limit_headers,
-    auth::AuthSession,
-    error::{AppError, Result},
-    service::AppState,
-};
+use crate::{api::add_rate_limit_headers, auth::AuthSession, error::{AppError, Result}, service::AppState};
 use entity::{friendship, notifications, user};
 
 #[cfg(test)]
@@ -247,7 +243,7 @@ mod tests {
                 Method::POST,
                 &format!("/api/v1/friends/requests/{friendship_id}/respond"),
             )
-            .json(&json!({"accept": true}))
+            .json(&json!{"accept": true})
             .await;
 
         assert!(
@@ -356,7 +352,7 @@ mod tests {
     }
 }
 
-#[derive(Debug, Serialize)]
+#[derive(Debug, Serialize, ToSchema)]
 pub struct FriendshipResponse {
     pub id: Uuid,
     pub requester_id: Uuid,
@@ -367,7 +363,7 @@ pub struct FriendshipResponse {
     pub friend_info: Option<FriendInfo>,
 }
 
-#[derive(Debug, Serialize)]
+#[derive(Debug, Serialize, ToSchema)]
 pub struct FriendInfo {
     pub id: Uuid,
     pub username: String,
@@ -377,16 +373,29 @@ pub struct FriendInfo {
     pub matchmaking_rank: i32,
 }
 
-#[derive(Debug, Deserialize)]
+#[derive(Debug, Deserialize, ToSchema)]
 pub struct SendFriendRequestRequest {
     pub addressee_username: String,
 }
 
-#[derive(Debug, Deserialize)]
+#[derive(Debug, Deserialize, ToSchema)]
 pub struct RespondToFriendRequestRequest {
     pub accept: bool,
 }
 
+#[utoipa::path(
+    post,
+    path = "/api/v1/friends/requests",
+    tag = "Friends",
+    request_body = SendFriendRequestRequest,
+    responses(
+        (status = 201, description = "Friend request sent successfully", body = FriendshipResponse),
+        (status = 400, description = "Bad request (e.g., friendship already exists)"),
+        (status = 401, description = "Authentication required"),
+        (status = 404, description = "User not found"),
+        (status = 500, description = "Internal server error")
+    )
+)]
 pub async fn send_friend_request(
     State(state): State<AppState>,
     auth_session: AuthSession,
@@ -472,6 +481,23 @@ pub async fn send_friend_request(
     Ok((StatusCode::CREATED, headers, Json(response)))
 }
 
+#[utoipa::path(
+    patch,
+    path = "/api/v1/friends/requests/{id}",
+    tag = "Friends",
+    params(
+        ("id" = Uuid, Path, description = "Friendship request ID")
+    ),
+    request_body = RespondToFriendRequestRequest,
+    responses(
+        (status = 200, description = "Friend request responded to successfully", body = FriendshipResponse),
+        (status = 400, description = "Bad request (e.g., request not pending)"),
+        (status = 401, description = "Authentication required"),
+        (status = 403, description = "Access denied"),
+        (status = 404, description = "Friend request not found"),
+        (status = 500, description = "Internal server error")
+    )
+)]
 pub async fn respond_to_friend_request(
     State(state): State<AppState>,
     auth_session: AuthSession,
@@ -563,6 +589,16 @@ pub async fn respond_to_friend_request(
     Ok((StatusCode::OK, headers, Json(response)))
 }
 
+#[utoipa::path(
+    get,
+    path = "/api/v1/friends",
+    tag = "Friends",
+    responses(
+        (status = 200, description = "List of friends", body = Vec<FriendshipResponse>),
+        (status = 401, description = "Authentication required"),
+        (status = 500, description = "Internal server error")
+    )
+)]
 pub async fn get_friends(
     State(state): State<AppState>,
     auth_session: AuthSession,
@@ -622,6 +658,16 @@ pub async fn get_friends(
     Ok((StatusCode::OK, headers, Json(responses)))
 }
 
+#[utoipa::path(
+    get,
+    path = "/api/v1/friends/requests",
+    tag = "Friends",
+    responses(
+        (status = 200, description = "List of pending friend requests", body = Vec<FriendshipResponse>),
+        (status = 401, description = "Authentication required"),
+        (status = 500, description = "Internal server error")
+    )
+)]
 pub async fn get_pending_friend_requests(
     State(state): State<AppState>,
     auth_session: AuthSession,
@@ -674,6 +720,21 @@ pub async fn get_pending_friend_requests(
     Ok((StatusCode::OK, headers, Json(responses)))
 }
 
+#[utoipa::path(
+    delete,
+    path = "/api/v1/friends/{id}",
+    tag = "Friends",
+    params(
+        ("id" = Uuid, Path, description = "Friendship ID")
+    ),
+    responses(
+        (status = 204, description = "Friend removed successfully"),
+        (status = 401, description = "Authentication required"),
+        (status = 403, description = "Access denied"),
+        (status = 404, description = "Friendship not found"),
+        (status = 500, description = "Internal server error")
+    )
+)]
 pub async fn remove_friend(
     State(state): State<AppState>,
     auth_session: AuthSession,
