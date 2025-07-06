@@ -302,7 +302,7 @@ mod tests {
         let participants = vec![&participant1, &participant2];
         let mut current_mmrs = HashMap::new();
         current_mmrs.insert(participant1.id, 1000);
-        current_mmrs.insert(participant2.id, 1000);
+        current_mmrs.insert(participant2.id, 1200); // Higher rated player loses
         
         let changes = calculate_mmr_changes(&participants, &current_mmrs);
         

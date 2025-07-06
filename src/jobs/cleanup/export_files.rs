@@ -154,7 +154,7 @@ mod tests {
         
         // Create a test file
         let mut file = File::create(&temp_file_path).expect("Failed to create test file");
-        writeln!(file, "test content").expect("Failed to write to test file");
+        writeln!(file, "test content").expect("Failed to write to temp file");
         
         // Verify file exists
         assert!(temp_file_path.exists());
