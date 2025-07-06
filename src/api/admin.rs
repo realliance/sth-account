@@ -1,5 +1,5 @@
 use axum::{
-    extract::{Path, Query, State},
+    extract::{Path, Query, State, ConnectInfo},
     http::{HeaderMap, StatusCode},
     response::Json,
 };
@@ -10,6 +10,7 @@ use sea_orm::{
 };
 use serde::{Deserialize, Serialize};
 use uuid::Uuid;
+use std::net::SocketAddr;
 
 use crate::{
     api::add_rate_limit_headers,
@@ -18,6 +19,32 @@ use crate::{
     service::AppState,
 };
 use entity::{user, report, audit_log, system_configuration, notifications};
+
+fn extract_ip_address(headers: &HeaderMap, connect_info: Option<ConnectInfo<SocketAddr>>) -> String {
+    // Check for X-Forwarded-For header (common in reverse proxy setups)
+    if let Some(forwarded) = headers.get("X-Forwarded-For") {
+        if let Ok(forwarded_str) = forwarded.to_str() {
+            if let Some(first_ip) = forwarded_str.split(',').next() {
+                return first_ip.trim().to_string();
+            }
+        }
+    }
+    
+    // Check for X-Real-IP header (nginx)
+    if let Some(real_ip) = headers.get("X-Real-IP") {
+        if let Ok(ip_str) = real_ip.to_str() {
+            return ip_str.to_string();
+        }
+    }
+    
+    // Fall back to connection info
+    if let Some(ConnectInfo(socket_addr)) = connect_info {
+        return socket_addr.ip().to_string();
+    }
+    
+    // Default fallback
+    "unknown".to_string()
+}
 
 
 #[derive(Debug, Serialize)]
@@ -194,6 +221,7 @@ pub async fn update_report(
     auth_session: AuthSession,
     mut headers: HeaderMap,
     Path(report_id): Path<Uuid>,
+    connect_info: Option<ConnectInfo<SocketAddr>>,
     Json(request): Json<UpdateReportRequest>,
 ) -> Result<(StatusCode, HeaderMap, Json<ReportResponse>)> {
     add_rate_limit_headers(&mut headers);
@@ -238,7 +266,7 @@ pub async fn update_report(
             "new_status": request.status,
             "previous_status": report.status
         }))),
-        ip_address: Set("0.0.0.0".to_string()), // TODO: Extract from request
+        ip_address: Set(extract_ip_address(&headers, connect_info.clone())),
         moderator_id: Set(Some(current_user.id)),
         created_at: Set(Utc::now().into()),
         deleted_at: Set(None),
@@ -284,6 +312,7 @@ pub async fn moderate_user(
     auth_session: AuthSession,
     mut headers: HeaderMap,
     Path(user_id): Path<Uuid>,
+    connect_info: Option<ConnectInfo<SocketAddr>>,
     Json(request): Json<UserModerationRequest>,
 ) -> Result<(StatusCode, HeaderMap, Json<serde_json::Value>)> {
     add_rate_limit_headers(&mut headers);
@@ -342,7 +371,7 @@ pub async fn moderate_user(
         user_id: Set(target_user.id),
         action_type: Set(format!("UserModeration_{}", request.action)),
         details: Set(Some(action_details)),
-        ip_address: Set("0.0.0.0".to_string()), // TODO: Extract from request
+        ip_address: Set(extract_ip_address(&headers, connect_info.clone())),
         moderator_id: Set(Some(current_user.id)),
         created_at: Set(Utc::now().into()),
         deleted_at: Set(None),
@@ -430,6 +459,7 @@ pub async fn update_system_config(
     State(state): State<AppState>,
     auth_session: AuthSession,
     mut headers: HeaderMap,
+    connect_info: Option<ConnectInfo<SocketAddr>>,
     Json(request): Json<SystemConfigRequest>,
 ) -> Result<(StatusCode, HeaderMap, Json<SystemConfigResponse>)> {
     add_rate_limit_headers(&mut headers);
@@ -482,7 +512,7 @@ pub async fn update_system_config(
             "config_key": request.key,
             "config_id": config.id
         }))),
-        ip_address: Set("0.0.0.0".to_string()), // TODO: Extract from request
+        ip_address: Set(extract_ip_address(&headers, connect_info.clone())),
         moderator_id: Set(Some(current_user.id)),
         created_at: Set(Utc::now().into()),
         deleted_at: Set(None),

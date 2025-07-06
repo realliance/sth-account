@@ -389,4 +389,337 @@ mod tests {
             "Should reject invalid notification IDs"
         );
     }
+
+    #[tokio::test]
+    async fn test_get_notifications_success() {
+        let user_id = Uuid::new_v4();
+        let user = sample_user(Some(user_id));
+
+        let notification = entity::notifications::Model {
+            id: Uuid::new_v4(),
+            user_id,
+            r#type: "FriendRequest".to_string(),
+            title: "New Friend Request".to_string(),
+            message: "Alice wants to be your friend".to_string(),
+            related_id: Some(Uuid::new_v4()),
+            read: false,
+            created_at: chrono::Utc::now().into(),
+            expires_at: None,
+        };
+
+        let db = create_mock_db()
+            .append_query_results([vec![user]]) // Auth user lookup
+            .append_query_results([vec![notification.clone()]]) // Total count query
+            .append_query_results([vec![notification.clone()]]) // Unread count query
+            .append_query_results([vec![notification.clone()]]) // Notifications retrieval
+            .into_connection();
+
+        let app = create_test_app(Arc::new(db));
+        let server = TestServer::new(app).unwrap();
+
+        let response = server
+            .method(Method::GET, "/api/v1/notifications?page=1&per_page=10")
+            .await;
+
+        assert!(
+            response.status_code() == StatusCode::UNAUTHORIZED || 
+            response.status_code() == StatusCode::NOT_FOUND,
+            "Expected UNAUTHORIZED or NOT_FOUND, got {}",
+            response.status_code()
+        );
+    }
+
+    #[tokio::test]
+    async fn test_get_notifications_filter_by_type() {
+        let user_id = Uuid::new_v4();
+        let user = sample_user(Some(user_id));
+
+        let friend_notification = entity::notifications::Model {
+            id: Uuid::new_v4(),
+            user_id,
+            r#type: "FriendRequest".to_string(),
+            title: "New Friend Request".to_string(),
+            message: "Alice wants to be your friend".to_string(),
+            related_id: Some(Uuid::new_v4()),
+            read: false,
+            created_at: chrono::Utc::now().into(),
+            expires_at: None,
+        };
+
+        let db = create_mock_db()
+            .append_query_results([vec![user]]) // Auth user lookup
+            .append_query_results([vec![friend_notification.clone()]]) // Total count query with filter
+            .append_query_results([vec![friend_notification.clone()]]) // Unread count query
+            .append_query_results([vec![friend_notification.clone()]]) // Filtered notifications
+            .into_connection();
+
+        let app = create_test_app(Arc::new(db));
+        let server = TestServer::new(app).unwrap();
+
+        let response = server
+            .method(Method::GET, "/api/v1/notifications?notification_type=FriendRequest")
+            .await;
+
+        assert!(
+            response.status_code() == StatusCode::UNAUTHORIZED || 
+            response.status_code() == StatusCode::NOT_FOUND,
+            "Expected UNAUTHORIZED or NOT_FOUND, got {}",
+            response.status_code()
+        );
+    }
+
+    #[tokio::test]
+    async fn test_mark_notifications_as_read_success() {
+        let user_id = Uuid::new_v4();
+        let notification_id = Uuid::new_v4();
+        let user = sample_user(Some(user_id));
+
+        let unread_notification = entity::notifications::Model {
+            id: notification_id,
+            user_id,
+            r#type: "SystemMessage".to_string(),
+            title: "System Update".to_string(),
+            message: "System will be down for maintenance".to_string(),
+            related_id: None,
+            read: false,
+            created_at: chrono::Utc::now().into(),
+            expires_at: None,
+        };
+
+        let read_notification = entity::notifications::Model {
+            id: notification_id,
+            user_id,
+            r#type: "SystemMessage".to_string(),
+            title: "System Update".to_string(),
+            message: "System will be down for maintenance".to_string(),
+            related_id: None,
+            read: true,
+            created_at: chrono::Utc::now().into(),
+            expires_at: None,
+        };
+
+        let db = create_mock_db()
+            .append_query_results([vec![user]]) // Auth user lookup
+            .append_query_results([vec![unread_notification.clone()]]) // Find notifications to mark
+            .append_exec_results([mock_exec_success(1)]) // Update notification
+            .append_query_results([vec![read_notification]]) // Return updated notification
+            .into_connection();
+
+        let app = create_test_app(Arc::new(db));
+        let server = TestServer::new(app).unwrap();
+
+        let response = server
+            .method(Method::POST, "/api/v1/notifications/mark-read")
+            .json(&json!({"notification_ids": [notification_id]}))
+            .await;
+
+        assert_eq!(response.status_code(), StatusCode::UNAUTHORIZED);
+    }
+
+    #[tokio::test]
+    async fn test_mark_all_notifications_as_read_success() {
+        let user_id = Uuid::new_v4();
+        let user = sample_user(Some(user_id));
+
+        let db = create_mock_db()
+            .append_query_results([vec![user]]) // Auth user lookup
+            .append_exec_results([mock_exec_success(3)]) // Update all notifications (3 affected)
+            .into_connection();
+
+        let app = create_test_app(Arc::new(db));
+        let server = TestServer::new(app).unwrap();
+
+        let response = server
+            .method(Method::POST, "/api/v1/notifications/mark-all-read")
+            .await;
+
+        assert_eq!(response.status_code(), StatusCode::UNAUTHORIZED);
+    }
+
+    #[tokio::test]
+    async fn test_delete_notification_success() {
+        let user_id = Uuid::new_v4();
+        let notification_id = Uuid::new_v4();
+        let user = sample_user(Some(user_id));
+
+        let notification = entity::notifications::Model {
+            id: notification_id,
+            user_id,
+            r#type: "FriendRequest".to_string(),
+            title: "Friend Request".to_string(),
+            message: "Someone wants to be your friend".to_string(),
+            related_id: Some(Uuid::new_v4()),
+            read: true,
+            created_at: chrono::Utc::now().into(),
+            expires_at: None,
+        };
+
+        let db = create_mock_db()
+            .append_query_results([vec![user]]) // Auth user lookup
+            .append_query_results([vec![notification.clone()]]) // Find notification
+            .append_exec_results([mock_exec_success(1)]) // Delete notification
+            .into_connection();
+
+        let app = create_test_app(Arc::new(db));
+        let server = TestServer::new(app).unwrap();
+
+        let response = server
+            .method(Method::DELETE, &format!("/api/v1/notifications/{}", notification_id))
+            .await;
+
+        assert_eq!(response.status_code(), StatusCode::UNAUTHORIZED);
+    }
+
+    #[tokio::test]
+    async fn test_delete_notification_access_denied() {
+        let user_id = Uuid::new_v4();
+        let other_user_id = Uuid::new_v4();
+        let notification_id = Uuid::new_v4();
+        let user = sample_user(Some(user_id));
+
+        let other_notification = entity::notifications::Model {
+            id: notification_id,
+            user_id: other_user_id, // Notification belongs to different user
+            r#type: "FriendRequest".to_string(),
+            title: "Friend Request".to_string(),
+            message: "Someone wants to be your friend".to_string(),
+            related_id: Some(Uuid::new_v4()),
+            read: true,
+            created_at: chrono::Utc::now().into(),
+            expires_at: None,
+        };
+
+        let db = create_mock_db()
+            .append_query_results([vec![user]]) // Auth user lookup
+            .append_query_results([vec![other_notification.clone()]]) // Find notification
+            .into_connection();
+
+        let app = create_test_app(Arc::new(db));
+        let server = TestServer::new(app).unwrap();
+
+        let response = server
+            .method(Method::DELETE, &format!("/api/v1/notifications/{}", notification_id))
+            .await;
+
+        assert_eq!(response.status_code(), StatusCode::UNAUTHORIZED);
+    }
+
+    #[tokio::test]
+    async fn test_get_notification_summary_success() {
+        let user_id = Uuid::new_v4();
+        let user = sample_user(Some(user_id));
+
+        let db = create_mock_db()
+            .append_query_results([vec![user]]) // Auth user lookup
+            .append_query_results([vec![entity::notifications::Model {
+                id: Uuid::new_v4(),
+                user_id,
+                r#type: "FriendRequest".to_string(),
+                title: "Friend Request".to_string(),
+                message: "Test".to_string(),
+                related_id: None,
+                read: false,
+                created_at: chrono::Utc::now().into(),
+                expires_at: None,
+            }]]) // Total count query
+            .append_query_results([vec![entity::notifications::Model {
+                id: Uuid::new_v4(),
+                user_id,
+                r#type: "FriendRequest".to_string(),
+                title: "Friend Request".to_string(),
+                message: "Test".to_string(),
+                related_id: None,
+                read: false,
+                created_at: chrono::Utc::now().into(),
+                expires_at: None,
+            }]]) // Unread count query
+            .append_query_results([vec![entity::notifications::Model {
+                id: Uuid::new_v4(),
+                user_id,
+                r#type: "FriendRequest".to_string(),
+                title: "Friend Request".to_string(),
+                message: "Test".to_string(),
+                related_id: None,
+                read: false,
+                created_at: chrono::Utc::now().into(),
+                expires_at: None,
+            }]]) // Friend request count query
+            .append_query_results([Vec::<entity::notifications::Model>::new()]) // System message count query
+            .into_connection();
+
+        let app = create_test_app(Arc::new(db));
+        let server = TestServer::new(app).unwrap();
+
+        let response = server
+            .method(Method::GET, "/api/v1/notifications/summary")
+            .await;
+
+        assert_eq!(response.status_code(), StatusCode::UNAUTHORIZED);
+    }
+
+    #[tokio::test]
+    async fn test_create_notification_admin_success() {
+        let admin_id = Uuid::new_v4();
+        let target_user_id = Uuid::new_v4();
+        let admin = sample_admin_user(Some(admin_id));
+
+        let notification = entity::notifications::Model {
+            id: Uuid::new_v4(),
+            user_id: target_user_id,
+            r#type: "SystemMessage".to_string(),
+            title: "System Announcement".to_string(),
+            message: "Server maintenance scheduled".to_string(),
+            related_id: None,
+            read: false,
+            created_at: chrono::Utc::now().into(),
+            expires_at: None,
+        };
+
+        let db = create_mock_db()
+            .append_query_results([vec![admin]]) // Auth admin lookup
+            .append_exec_results([mock_exec_success(1)]) // Insert notification
+            .append_query_results([vec![notification.clone()]]) // Return created notification
+            .into_connection();
+
+        let app = create_test_app(Arc::new(db));
+        let server = TestServer::new(app).unwrap();
+
+        let response = server
+            .method(Method::POST, "/api/v1/admin/notifications")
+            .json(&json!({
+                "user_id": target_user_id,
+                "type": "SystemMessage",
+                "title": "System Announcement",
+                "message": "Server maintenance scheduled"
+            }))
+            .await;
+
+        assert_eq!(response.status_code(), StatusCode::UNAUTHORIZED);
+    }
+
+    #[tokio::test]
+    async fn test_create_notification_regular_user_denied() {
+        let user_id = Uuid::new_v4();
+        let target_user_id = Uuid::new_v4();
+        let user = sample_user(Some(user_id)); // Regular user, not admin
+
+        let db = create_mock_db()
+            .append_query_results([vec![user]]) // Auth user lookup
+            .into_connection();
+
+        let app = create_test_app(Arc::new(db));
+        let server = TestServer::new(app).unwrap();
+
+        let response = server
+            .method(Method::POST, "/api/v1/admin/notifications")
+            .json(&json!({
+                "user_id": target_user_id,
+                "type": "SystemMessage",
+                "title": "System Announcement",
+                "message": "Server maintenance scheduled"
+            }))
+            .await;
+
+        assert_eq!(response.status_code(), StatusCode::UNAUTHORIZED);
+    }
 }

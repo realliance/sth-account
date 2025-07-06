@@ -518,43 +518,6 @@ mod tests {
     use crate::test_utils::test_utils::*;
     use entity::{private_room, user};
 
-    fn create_sample_user() -> user::Model {
-        user::Model {
-            id: Uuid::new_v4(),
-            username: "testuser".to_string(),
-            country: "USA".to_string(),
-            favorite_tile: Some("Man1".to_string()),
-            pronouns: Some("they/them".to_string()),
-            matchmaking_rank: 1500,
-            password: "hashed_password".to_string(),
-            created_at: chrono::Utc::now().into(),
-            passkey: None,
-            role: "Active".to_string(),
-            email: Some("test@example.com".to_string()),
-            last_active_at: Some(chrono::Utc::now().into()),
-            account_status: "Active".to_string(),
-            settings: None,
-            deleted_at: None,
-        }
-    }
-
-    fn create_sample_room(host_id: Uuid) -> private_room::Model {
-        private_room::Model {
-            id: Uuid::new_v4(),
-            host_id,
-            room_name: "Test Room".to_string(),
-            room_code: "ABC123".to_string(),
-            password: None,
-            max_players: 4,
-            allow_bots: false,
-            invite_only: false,
-            status: "Waiting".to_string(),
-            room_settings: None,
-            created_at: chrono::Utc::now().into(),
-            started_at: None,
-            completed_at: None,
-        }
-    }
 
     #[tokio::test]
     async fn test_create_room_unauthorized() {

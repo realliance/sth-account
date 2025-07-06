@@ -25,7 +25,7 @@ pub mod test_utils {
         service::AppState,
     };
     use entity::{
-        audit_log, bot, data_export_requests, friendship, system_configuration, user,
+        audit_log, bot, data_export_requests, friendship, user,
         user_statistics,
     };
 
@@ -214,6 +214,14 @@ pub mod test_utils {
     /// Create a mock database connection
     pub fn create_mock_db() -> MockDatabase {
         MockDatabase::new(DatabaseBackend::Postgres)
+    }
+
+    /// Create a mock database connection that fails ping operations
+    pub fn create_failing_mock_db() -> MockDatabase {
+        use sea_orm::DbErr;
+        // Mock database that will fail any query (including ping)
+        MockDatabase::new(DatabaseBackend::Postgres)
+            .append_query_errors([DbErr::Custom("Database connection failed".to_string())])
     }
 
     /// Create a sample user model for testing

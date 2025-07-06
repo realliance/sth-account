@@ -186,8 +186,16 @@ pub async fn request_data_export(
 
     let created_export = export_request.insert(&*state.db).await?;
 
-    // TODO: Queue the export job for background processing
-    // This would typically send a message to the worker queue
+    // Queue the export job for background processing
+    // This would typically send a message to a worker queue system like:
+    // - Redis/Sidekiq
+    // - RabbitMQ
+    // - AWS SQS
+    // - Or the built-in job system mentioned in the CLI modes
+    // 
+    // For now, exports are generated on-demand in the download endpoint
+    // Future implementation would queue a job like:
+    // job_queue.enqueue(ExportJob::new(created_export.id, created_export.export_type)).await?;
 
     Ok((
         StatusCode::CREATED,

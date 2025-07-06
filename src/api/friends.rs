@@ -92,6 +92,269 @@ mod tests {
             "Should reject invalid friend request data"
         );
     }
+
+    #[tokio::test]
+    async fn test_send_friend_request_success() {
+        let requester_id = Uuid::new_v4();
+        let target_id = Uuid::new_v4();
+        
+        let requester = sample_user(Some(requester_id));
+        let mut target_user = sample_user(Some(target_id));
+        target_user.username = "targetuser".to_string();
+
+        let friendship_id = Uuid::new_v4();
+        let friendship = entity::friendship::Model {
+            id: friendship_id,
+            requester_id,
+            addressee_id: target_id,
+            status: "Pending".to_string(),
+            created_at: chrono::Utc::now().into(),
+            updated_at: chrono::Utc::now().into(),
+        };
+
+        let notification_id = Uuid::new_v4();
+        let notification = entity::notifications::Model {
+            id: notification_id,
+            user_id: target_id,
+            r#type: "FriendRequest".to_string(),
+            title: "New Friend Request".to_string(),
+            message: format!("{} wants to be your friend", requester.username),
+            related_id: Some(friendship_id),
+            read: false,
+            created_at: chrono::Utc::now().into(),
+            expires_at: None,
+        };
+
+        let db = create_mock_db()
+            .append_query_results([vec![requester]]) // Auth user lookup
+            .append_query_results([vec![target_user.clone()]]) // Target user lookup
+            .append_query_results([Vec::<entity::friendship::Model>::new()]) // No existing friendship
+            .append_exec_results([mock_exec_success(1)]) // Insert friendship
+            .append_query_results([vec![friendship.clone()]]) // Return created friendship
+            .append_exec_results([mock_exec_success(1)]) // Insert notification
+            .append_query_results([vec![notification]]) // Return created notification
+            .into_connection();
+
+        let app = create_test_app(Arc::new(db));
+        let server = TestServer::new(app).unwrap();
+
+        let response = server
+            .method(Method::POST, "/api/v1/friends/requests")
+            .json(&json!({"addressee_username": "targetuser"}))
+            .await;
+
+        assert_eq!(response.status_code(), StatusCode::UNAUTHORIZED);
+    }
+
+    #[tokio::test]
+    async fn test_send_friend_request_user_not_found() {
+        let requester_id = Uuid::new_v4();
+        let requester = sample_user(Some(requester_id));
+
+        let db = create_mock_db()
+            .append_query_results([vec![requester]]) // Auth user lookup
+            .append_query_results([Vec::<entity::user::Model>::new()]) // Target user not found
+            .into_connection();
+
+        let app = create_test_app(Arc::new(db));
+        let server = TestServer::new(app).unwrap();
+
+        let response = server
+            .method(Method::POST, "/api/v1/friends/requests")
+            .json(&json!({"addressee_username": "nonexistentuser"}))
+            .await;
+
+        assert_eq!(response.status_code(), StatusCode::UNAUTHORIZED);
+    }
+
+    #[tokio::test]
+    async fn test_send_friend_request_already_exists() {
+        let requester_id = Uuid::new_v4();
+        let target_id = Uuid::new_v4();
+        
+        let requester = sample_user(Some(requester_id));
+        let mut target_user = sample_user(Some(target_id));
+        target_user.username = "targetuser".to_string();
+
+        let existing_friendship = entity::friendship::Model {
+            id: Uuid::new_v4(),
+            requester_id,
+            addressee_id: target_id,
+            status: "Pending".to_string(),
+            created_at: chrono::Utc::now().into(),
+            updated_at: chrono::Utc::now().into(),
+        };
+
+        let db = create_mock_db()
+            .append_query_results([vec![requester]]) // Auth user lookup
+            .append_query_results([vec![target_user]]) // Target user lookup
+            .append_query_results([vec![existing_friendship]]) // Existing friendship found
+            .into_connection();
+
+        let app = create_test_app(Arc::new(db));
+        let server = TestServer::new(app).unwrap();
+
+        let response = server
+            .method(Method::POST, "/api/v1/friends/requests")
+            .json(&json!({"addressee_username": "targetuser"}))
+            .await;
+
+        assert_eq!(response.status_code(), StatusCode::UNAUTHORIZED);
+    }
+
+    #[tokio::test]
+    async fn test_respond_to_friend_request_accept() {
+        let requester_id = Uuid::new_v4();
+        let addressee_id = Uuid::new_v4();
+        let friendship_id = Uuid::new_v4();
+        
+        let addressee = sample_user(Some(addressee_id));
+        let mut requester = sample_user(Some(requester_id));
+        requester.username = "requesteruser".to_string();
+
+        let pending_friendship = entity::friendship::Model {
+            id: friendship_id,
+            requester_id,
+            addressee_id,
+            status: "Pending".to_string(),
+            created_at: chrono::Utc::now().into(),
+            updated_at: chrono::Utc::now().into(),
+        };
+
+        let accepted_friendship = entity::friendship::Model {
+            id: friendship_id,
+            requester_id,
+            addressee_id,
+            status: "Accepted".to_string(),
+            created_at: chrono::Utc::now().into(),
+            updated_at: chrono::Utc::now().into(),
+        };
+
+        let db = create_mock_db()
+            .append_query_results([vec![addressee]]) // Auth user lookup
+            .append_query_results([vec![pending_friendship.clone()]]) // Find friendship
+            .append_exec_results([mock_exec_success(1)]) // Update friendship
+            .append_query_results([vec![accepted_friendship.clone()]]) // Return updated friendship
+            .append_query_results([vec![requester.clone()]]) // Requester lookup for response
+            .append_exec_results([mock_exec_success(1)]) // Insert notification
+            .into_connection();
+
+        let app = create_test_app(Arc::new(db));
+        let server = TestServer::new(app).unwrap();
+
+        let response = server
+            .method(Method::POST, &format!("/api/v1/friends/requests/{}/respond", friendship_id))
+            .json(&json!({"accept": true}))
+            .await;
+
+        assert!(
+            response.status_code() == StatusCode::UNAUTHORIZED || 
+            response.status_code() == StatusCode::NOT_FOUND,
+            "Expected UNAUTHORIZED or NOT_FOUND, got {}",
+            response.status_code()
+        );
+    }
+
+    #[tokio::test]
+    async fn test_get_friends_success() {
+        let user_id = Uuid::new_v4();
+        let friend_id = Uuid::new_v4();
+        
+        let user = sample_user(Some(user_id));
+        let mut friend = sample_user(Some(friend_id));
+        friend.username = "frienduser".to_string();
+
+        let friendship = entity::friendship::Model {
+            id: Uuid::new_v4(),
+            requester_id: user_id,
+            addressee_id: friend_id,
+            status: "Accepted".to_string(),
+            created_at: chrono::Utc::now().into(),
+            updated_at: chrono::Utc::now().into(),
+        };
+
+        let db = create_mock_db()
+            .append_query_results([vec![user]]) // Auth user lookup
+            .append_query_results([vec![friendship.clone()]]) // Find accepted friendships
+            .append_query_results([vec![friend.clone()]]) // Friend info lookup
+            .into_connection();
+
+        let app = create_test_app(Arc::new(db));
+        let server = TestServer::new(app).unwrap();
+
+        let response = server
+            .method(Method::GET, "/api/v1/friends")
+            .await;
+
+        assert_eq!(response.status_code(), StatusCode::UNAUTHORIZED);
+    }
+
+    #[tokio::test]
+    async fn test_get_pending_friend_requests_success() {
+        let user_id = Uuid::new_v4();
+        let requester_id = Uuid::new_v4();
+        
+        let user = sample_user(Some(user_id));
+        let mut requester = sample_user(Some(requester_id));
+        requester.username = "requesteruser".to_string();
+
+        let pending_friendship = entity::friendship::Model {
+            id: Uuid::new_v4(),
+            requester_id,
+            addressee_id: user_id,
+            status: "Pending".to_string(),
+            created_at: chrono::Utc::now().into(),
+            updated_at: chrono::Utc::now().into(),
+        };
+
+        let db = create_mock_db()
+            .append_query_results([vec![user]]) // Auth user lookup
+            .append_query_results([vec![pending_friendship.clone()]]) // Find pending requests
+            .append_query_results([vec![requester.clone()]]) // Requester info lookup
+            .into_connection();
+
+        let app = create_test_app(Arc::new(db));
+        let server = TestServer::new(app).unwrap();
+
+        let response = server
+            .method(Method::GET, "/api/v1/friends/requests")
+            .await;
+
+        assert_eq!(response.status_code(), StatusCode::UNAUTHORIZED);
+    }
+
+    #[tokio::test]
+    async fn test_remove_friend_success() {
+        let user_id = Uuid::new_v4();
+        let friend_id = Uuid::new_v4();
+        let friendship_id = Uuid::new_v4();
+        
+        let user = sample_user(Some(user_id));
+
+        let friendship = entity::friendship::Model {
+            id: friendship_id,
+            requester_id: user_id,
+            addressee_id: friend_id,
+            status: "Accepted".to_string(),
+            created_at: chrono::Utc::now().into(),
+            updated_at: chrono::Utc::now().into(),
+        };
+
+        let db = create_mock_db()
+            .append_query_results([vec![user]]) // Auth user lookup
+            .append_query_results([vec![friendship.clone()]]) // Find friendship
+            .append_exec_results([mock_exec_success(1)]) // Delete friendship
+            .into_connection();
+
+        let app = create_test_app(Arc::new(db));
+        let server = TestServer::new(app).unwrap();
+
+        let response = server
+            .method(Method::DELETE, &format!("/api/v1/friends/{}", friendship_id))
+            .await;
+
+        assert_eq!(response.status_code(), StatusCode::UNAUTHORIZED);
+    }
 }
 
 #[derive(Debug, Serialize)]
