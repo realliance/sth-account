@@ -23,11 +23,7 @@ impl MigrationTrait for Migration {
                             .not_null()
                             .unique_key(),
                     )
-                    .col(
-                        ColumnDef::new(SystemConfiguration::Value)
-                            .json()
-                            .not_null(),
-                    )
+                    .col(ColumnDef::new(SystemConfiguration::Value).json().not_null())
                     .col(
                         ColumnDef::new(SystemConfiguration::Description)
                             .text()

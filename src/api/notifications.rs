@@ -5,8 +5,8 @@ use axum::{
 };
 use chrono::Utc;
 use sea_orm::{
-    ActiveModelTrait, ColumnTrait, EntityTrait, QueryFilter, QueryOrder, Set, PaginatorTrait,
-    QuerySelect,
+    ActiveModelTrait, ColumnTrait, EntityTrait, PaginatorTrait, QueryFilter, QueryOrder,
+    QuerySelect, Set,
 };
 use serde::{Deserialize, Serialize};
 use uuid::Uuid;
@@ -18,7 +18,6 @@ use crate::{
     service::AppState,
 };
 use entity::notifications;
-
 
 #[derive(Debug, Serialize)]
 pub struct NotificationResponse {
@@ -90,7 +89,9 @@ pub async fn get_notifications(
 ) -> Result<(StatusCode, HeaderMap, Json<NotificationsResponse>)> {
     add_rate_limit_headers(&mut headers);
 
-    let current_user = auth_session.user.ok_or(AppError::Auth("Not authenticated".to_string()))?;
+    let current_user = auth_session
+        .user
+        .ok_or(AppError::Auth("Not authenticated".to_string()))?;
 
     let page = query.page.unwrap_or(1).max(1);
     let per_page = query.per_page.unwrap_or(20).clamp(1, 100);
@@ -115,8 +116,9 @@ pub async fn get_notifications(
     // Get unread count separately
     let unread_count = notifications::Entity::find()
         .filter(
-            notifications::Column::UserId.eq(current_user.id)
-                .and(notifications::Column::Read.eq(false))
+            notifications::Column::UserId
+                .eq(current_user.id)
+                .and(notifications::Column::Read.eq(false)),
         )
         .count(&*state.db)
         .await?;
@@ -131,7 +133,10 @@ pub async fn get_notifications(
     let total_pages = total_count.div_ceil(per_page);
 
     let response = NotificationsResponse {
-        notifications: notifications.into_iter().map(NotificationResponse::from).collect(),
+        notifications: notifications
+            .into_iter()
+            .map(NotificationResponse::from)
+            .collect(),
         total_count,
         unread_count,
         page,
@@ -150,13 +155,16 @@ pub async fn mark_notifications_as_read(
 ) -> Result<(StatusCode, HeaderMap, Json<serde_json::Value>)> {
     add_rate_limit_headers(&mut headers);
 
-    let current_user = auth_session.user.ok_or(AppError::Auth("Not authenticated".to_string()))?;
+    let current_user = auth_session
+        .user
+        .ok_or(AppError::Auth("Not authenticated".to_string()))?;
 
     // Find notifications belonging to the current user
     let notifications = notifications::Entity::find()
         .filter(
-            notifications::Column::UserId.eq(current_user.id)
-                .and(notifications::Column::Id.is_in(request.notification_ids.clone()))
+            notifications::Column::UserId
+                .eq(current_user.id)
+                .and(notifications::Column::Id.is_in(request.notification_ids.clone())),
         )
         .all(&*state.db)
         .await?;
@@ -189,14 +197,17 @@ pub async fn mark_all_notifications_as_read(
 ) -> Result<(StatusCode, HeaderMap, Json<serde_json::Value>)> {
     add_rate_limit_headers(&mut headers);
 
-    let current_user = auth_session.user.ok_or(AppError::Auth("Not authenticated".to_string()))?;
+    let current_user = auth_session
+        .user
+        .ok_or(AppError::Auth("Not authenticated".to_string()))?;
 
     // Update all unread notifications for the current user
     let update_result = notifications::Entity::update_many()
         .col_expr(notifications::Column::Read, true.into())
         .filter(
-            notifications::Column::UserId.eq(current_user.id)
-                .and(notifications::Column::Read.eq(false))
+            notifications::Column::UserId
+                .eq(current_user.id)
+                .and(notifications::Column::Read.eq(false)),
         )
         .exec(&*state.db)
         .await?;
@@ -219,7 +230,9 @@ pub async fn delete_notification(
 ) -> Result<(StatusCode, HeaderMap)> {
     add_rate_limit_headers(&mut headers);
 
-    let current_user = auth_session.user.ok_or(AppError::Auth("Not authenticated".to_string()))?;
+    let current_user = auth_session
+        .user
+        .ok_or(AppError::Auth("Not authenticated".to_string()))?;
 
     // Find the notification and verify ownership
     let notification = notifications::Entity::find_by_id(notification_id)
@@ -246,7 +259,9 @@ pub async fn get_notification_summary(
 ) -> Result<(StatusCode, HeaderMap, Json<serde_json::Value>)> {
     add_rate_limit_headers(&mut headers);
 
-    let current_user = auth_session.user.ok_or(AppError::Auth("Not authenticated".to_string()))?;
+    let current_user = auth_session
+        .user
+        .ok_or(AppError::Auth("Not authenticated".to_string()))?;
 
     // Get counts by type and read status
     let total_count = notifications::Entity::find()
@@ -256,26 +271,29 @@ pub async fn get_notification_summary(
 
     let unread_count = notifications::Entity::find()
         .filter(
-            notifications::Column::UserId.eq(current_user.id)
-                .and(notifications::Column::Read.eq(false))
+            notifications::Column::UserId
+                .eq(current_user.id)
+                .and(notifications::Column::Read.eq(false)),
         )
         .count(&*state.db)
         .await?;
 
     let friend_request_count = notifications::Entity::find()
         .filter(
-            notifications::Column::UserId.eq(current_user.id)
+            notifications::Column::UserId
+                .eq(current_user.id)
                 .and(notifications::Column::Type.eq("FriendRequest"))
-                .and(notifications::Column::Read.eq(false))
+                .and(notifications::Column::Read.eq(false)),
         )
         .count(&*state.db)
         .await?;
 
     let system_message_count = notifications::Entity::find()
         .filter(
-            notifications::Column::UserId.eq(current_user.id)
+            notifications::Column::UserId
+                .eq(current_user.id)
                 .and(notifications::Column::Type.eq("SystemMessage"))
-                .and(notifications::Column::Read.eq(false))
+                .and(notifications::Column::Read.eq(false)),
         )
         .count(&*state.db)
         .await?;
@@ -303,7 +321,9 @@ pub async fn create_notification(
 ) -> Result<(StatusCode, HeaderMap, Json<NotificationResponse>)> {
     add_rate_limit_headers(&mut headers);
 
-    let current_user = auth_session.user.ok_or(AppError::Auth("Not authenticated".to_string()))?;
+    let current_user = auth_session
+        .user
+        .ok_or(AppError::Auth("Not authenticated".to_string()))?;
 
     // Check if user has admin privileges
     if current_user.role != "Admin" && current_user.role != "Moderator" {
@@ -354,9 +374,10 @@ mod tests {
 
         for (endpoint, method) in &endpoints {
             let response = server.method(method.clone(), endpoint).await;
-            
+
             assert!(
-                response.status_code() == StatusCode::UNAUTHORIZED || response.status_code() == StatusCode::FORBIDDEN,
+                response.status_code() == StatusCode::UNAUTHORIZED
+                    || response.status_code() == StatusCode::FORBIDDEN,
                 "Endpoint {} {} should require authentication, got {}",
                 method,
                 endpoint,
@@ -383,9 +404,9 @@ mod tests {
             .await;
 
         assert!(
-            response.status_code() == StatusCode::BAD_REQUEST ||
-            response.status_code() == StatusCode::UNPROCESSABLE_ENTITY ||
-            response.status_code() == StatusCode::UNAUTHORIZED,
+            response.status_code() == StatusCode::BAD_REQUEST
+                || response.status_code() == StatusCode::UNPROCESSABLE_ENTITY
+                || response.status_code() == StatusCode::UNAUTHORIZED,
             "Should reject invalid notification IDs"
         );
     }
@@ -422,8 +443,8 @@ mod tests {
             .await;
 
         assert!(
-            response.status_code() == StatusCode::UNAUTHORIZED || 
-            response.status_code() == StatusCode::NOT_FOUND,
+            response.status_code() == StatusCode::UNAUTHORIZED
+                || response.status_code() == StatusCode::NOT_FOUND,
             "Expected UNAUTHORIZED or NOT_FOUND, got {}",
             response.status_code()
         );
@@ -457,12 +478,15 @@ mod tests {
         let server = TestServer::new(app).unwrap();
 
         let response = server
-            .method(Method::GET, "/api/v1/notifications?notification_type=FriendRequest")
+            .method(
+                Method::GET,
+                "/api/v1/notifications?notification_type=FriendRequest",
+            )
             .await;
 
         assert!(
-            response.status_code() == StatusCode::UNAUTHORIZED || 
-            response.status_code() == StatusCode::NOT_FOUND,
+            response.status_code() == StatusCode::UNAUTHORIZED
+                || response.status_code() == StatusCode::NOT_FOUND,
             "Expected UNAUTHORIZED or NOT_FOUND, got {}",
             response.status_code()
         );
@@ -564,7 +588,10 @@ mod tests {
         let server = TestServer::new(app).unwrap();
 
         let response = server
-            .method(Method::DELETE, &format!("/api/v1/notifications/{notification_id}"))
+            .method(
+                Method::DELETE,
+                &format!("/api/v1/notifications/{notification_id}"),
+            )
             .await;
 
         assert_eq!(response.status_code(), StatusCode::UNAUTHORIZED);
@@ -598,7 +625,10 @@ mod tests {
         let server = TestServer::new(app).unwrap();
 
         let response = server
-            .method(Method::DELETE, &format!("/api/v1/notifications/{notification_id}"))
+            .method(
+                Method::DELETE,
+                &format!("/api/v1/notifications/{notification_id}"),
+            )
             .await;
 
         assert_eq!(response.status_code(), StatusCode::UNAUTHORIZED);

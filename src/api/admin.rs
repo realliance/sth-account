@@ -1,16 +1,16 @@
 use axum::{
-    extract::{Path, Query, State, ConnectInfo},
+    extract::{ConnectInfo, Path, Query, State},
     http::{HeaderMap, StatusCode},
     response::Json,
 };
 use chrono::Utc;
 use sea_orm::{
-    ActiveModelTrait, ColumnTrait, EntityTrait, QueryFilter, QueryOrder, Set, PaginatorTrait,
-    QuerySelect,
+    ActiveModelTrait, ColumnTrait, EntityTrait, PaginatorTrait, QueryFilter, QueryOrder,
+    QuerySelect, Set,
 };
 use serde::{Deserialize, Serialize};
-use uuid::Uuid;
 use std::net::SocketAddr;
+use uuid::Uuid;
 
 use crate::{
     api::add_rate_limit_headers,
@@ -18,9 +18,12 @@ use crate::{
     error::{AppError, Result},
     service::AppState,
 };
-use entity::{user, report, audit_log, system_configuration, notifications};
+use entity::{audit_log, notifications, report, system_configuration, user};
 
-fn extract_ip_address(headers: &HeaderMap, connect_info: Option<ConnectInfo<SocketAddr>>) -> String {
+fn extract_ip_address(
+    headers: &HeaderMap,
+    connect_info: Option<ConnectInfo<SocketAddr>>,
+) -> String {
     // Check for X-Forwarded-For header (common in reverse proxy setups)
     if let Some(forwarded) = headers.get("X-Forwarded-For") {
         if let Ok(forwarded_str) = forwarded.to_str() {
@@ -29,23 +32,22 @@ fn extract_ip_address(headers: &HeaderMap, connect_info: Option<ConnectInfo<Sock
             }
         }
     }
-    
+
     // Check for X-Real-IP header (nginx)
     if let Some(real_ip) = headers.get("X-Real-IP") {
         if let Ok(ip_str) = real_ip.to_str() {
             return ip_str.to_string();
         }
     }
-    
+
     // Fall back to connection info
     if let Some(ConnectInfo(socket_addr)) = connect_info {
         return socket_addr.ip().to_string();
     }
-    
+
     // Default fallback
     "unknown".to_string()
 }
-
 
 #[derive(Debug, Serialize)]
 pub struct ReportResponse {
@@ -106,7 +108,7 @@ pub struct UserModerationRequest {
     pub action: String, // "suspend", "ban", "activate", "change_role"
     pub reason: String,
     pub duration_days: Option<i32>, // For suspensions
-    pub new_role: Option<String>, // For role changes
+    pub new_role: Option<String>,   // For role changes
 }
 
 #[derive(Debug, Deserialize)]
@@ -137,7 +139,9 @@ pub async fn get_reports(
 ) -> Result<(StatusCode, HeaderMap, Json<serde_json::Value>)> {
     add_rate_limit_headers(&mut headers);
 
-    let current_user = auth_session.user.ok_or(AppError::Auth("Not authenticated".to_string()))?;
+    let current_user = auth_session
+        .user
+        .ok_or(AppError::Auth("Not authenticated".to_string()))?;
 
     // Check if user has moderator/admin privileges
     if current_user.role != "Admin" && current_user.role != "Moderator" {
@@ -147,8 +151,7 @@ pub async fn get_reports(
     let page = query.page.unwrap_or(1).max(1);
     let per_page = query.per_page.unwrap_or(20).clamp(1, 100);
 
-    let mut query_builder = report::Entity::find()
-        .order_by_desc(report::Column::CreatedAt);
+    let mut query_builder = report::Entity::find().order_by_desc(report::Column::CreatedAt);
 
     // Apply filters
     if let Some(status) = &query.status {
@@ -170,7 +173,7 @@ pub async fn get_reports(
         .await?;
 
     let mut responses = Vec::new();
-    
+
     for report_model in reports {
         // Get author info
         let author = user::Entity::find_by_id(report_model.author_id)
@@ -226,7 +229,9 @@ pub async fn update_report(
 ) -> Result<(StatusCode, HeaderMap, Json<ReportResponse>)> {
     add_rate_limit_headers(&mut headers);
 
-    let current_user = auth_session.user.ok_or(AppError::Auth("Not authenticated".to_string()))?;
+    let current_user = auth_session
+        .user
+        .ok_or(AppError::Auth("Not authenticated".to_string()))?;
 
     // Check if user has moderator/admin privileges
     if current_user.role != "Admin" && current_user.role != "Moderator" {
@@ -241,11 +246,11 @@ pub async fn update_report(
     let mut active_model: report::ActiveModel = report.clone().into();
     active_model.status = Set(request.status.clone());
     active_model.mod_report_author = Set(Some(current_user.id));
-    
+
     if let Some(write_up) = request.write_up {
         active_model.write_up = Set(Some(write_up));
     }
-    
+
     if let Some(severity) = request.severity {
         active_model.severity = Set(severity);
     }
@@ -317,7 +322,9 @@ pub async fn moderate_user(
 ) -> Result<(StatusCode, HeaderMap, Json<serde_json::Value>)> {
     add_rate_limit_headers(&mut headers);
 
-    let current_user = auth_session.user.ok_or(AppError::Auth("Not authenticated".to_string()))?;
+    let current_user = auth_session
+        .user
+        .ok_or(AppError::Auth("Not authenticated".to_string()))?;
 
     // Check if user has admin privileges (only admins can moderate)
     if current_user.role != "Admin" {
@@ -353,9 +360,12 @@ pub async fn moderate_user(
             if let Some(new_role) = &request.new_role {
                 active_model.role = Set(new_role.clone());
                 action_details["new_role"] = serde_json::Value::from(new_role.as_str());
-                action_details["previous_role"] = serde_json::Value::from(target_user.role.as_str());
+                action_details["previous_role"] =
+                    serde_json::Value::from(target_user.role.as_str());
             } else {
-                return Err(AppError::BadRequest("new_role required for change_role action".to_string()));
+                return Err(AppError::BadRequest(
+                    "new_role required for change_role action".to_string(),
+                ));
             }
         }
         _ => {
@@ -415,7 +425,9 @@ pub async fn get_system_config(
 ) -> Result<(StatusCode, HeaderMap, Json<Vec<SystemConfigResponse>>)> {
     add_rate_limit_headers(&mut headers);
 
-    let current_user = auth_session.user.ok_or(AppError::Auth("Not authenticated".to_string()))?;
+    let current_user = auth_session
+        .user
+        .ok_or(AppError::Auth("Not authenticated".to_string()))?;
 
     // Check if user has admin privileges
     if current_user.role != "Admin" {
@@ -464,7 +476,9 @@ pub async fn update_system_config(
 ) -> Result<(StatusCode, HeaderMap, Json<SystemConfigResponse>)> {
     add_rate_limit_headers(&mut headers);
 
-    let current_user = auth_session.user.ok_or(AppError::Auth("Not authenticated".to_string()))?;
+    let current_user = auth_session
+        .user
+        .ok_or(AppError::Auth("Not authenticated".to_string()))?;
 
     // Check if user has admin privileges
     if current_user.role != "Admin" {
@@ -483,7 +497,7 @@ pub async fn update_system_config(
         active_model.value = Set(request.value);
         active_model.updated_by = Set(current_user.id);
         active_model.updated_at = Set(Utc::now().into());
-        
+
         if let Some(description) = request.description {
             active_model.description = Set(Some(description));
         }
@@ -548,7 +562,9 @@ pub async fn get_audit_logs(
 ) -> Result<(StatusCode, HeaderMap, Json<serde_json::Value>)> {
     add_rate_limit_headers(&mut headers);
 
-    let current_user = auth_session.user.ok_or(AppError::Auth("Not authenticated".to_string()))?;
+    let current_user = auth_session
+        .user
+        .ok_or(AppError::Auth("Not authenticated".to_string()))?;
 
     // Check if user has admin privileges
     if current_user.role != "Admin" {
@@ -651,9 +667,10 @@ mod tests {
 
         for (endpoint, method) in &endpoints {
             let response = server.method(method.clone(), endpoint).await;
-            
+
             assert!(
-                response.status_code() == StatusCode::UNAUTHORIZED || response.status_code() == StatusCode::FORBIDDEN,
+                response.status_code() == StatusCode::UNAUTHORIZED
+                    || response.status_code() == StatusCode::FORBIDDEN,
                 "Endpoint {} {} should require authentication, got {}",
                 method,
                 endpoint,
@@ -678,7 +695,8 @@ mod tests {
             }))
             .await;
         assert!(
-            response.status_code() == StatusCode::UNAUTHORIZED || response.status_code() == StatusCode::FORBIDDEN,
+            response.status_code() == StatusCode::UNAUTHORIZED
+                || response.status_code() == StatusCode::FORBIDDEN,
             "Admin notification endpoint should require auth"
         );
     }
@@ -695,13 +713,11 @@ mod tests {
         let app = create_test_app(Arc::new(db));
         let server = TestServer::new(app).unwrap();
 
-        let response = server
-            .method(Method::GET, "/api/v1/admin/config")
-            .await;
+        let response = server.method(Method::GET, "/api/v1/admin/config").await;
 
         assert!(
-            response.status_code() == StatusCode::FORBIDDEN ||
-            response.status_code() == StatusCode::UNAUTHORIZED,
+            response.status_code() == StatusCode::FORBIDDEN
+                || response.status_code() == StatusCode::UNAUTHORIZED,
             "Admin config endpoint should reject regular users"
         );
     }
@@ -718,9 +734,7 @@ mod tests {
         let app = create_test_app(Arc::new(db));
         let server = TestServer::new(app).unwrap();
 
-        let response = server
-            .method(Method::GET, "/api/v1/admin/reports")
-            .await;
+        let response = server.method(Method::GET, "/api/v1/admin/reports").await;
 
         assert_ne!(
             response.status_code(),
@@ -741,9 +755,7 @@ mod tests {
         let app = create_test_app(Arc::new(db));
         let server = TestServer::new(app).unwrap();
 
-        let response = server
-            .method(Method::GET, "/api/v1/admin/config")
-            .await;
+        let response = server.method(Method::GET, "/api/v1/admin/config").await;
 
         assert_ne!(
             response.status_code(),

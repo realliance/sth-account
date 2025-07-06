@@ -52,11 +52,7 @@ impl MigrationTrait for Migration {
                             .decimal_len(10, 2)
                             .null(),
                     )
-                    .col(
-                        ColumnDef::new(UserStatistics::PeakMmr)
-                            .integer()
-                            .null(),
-                    )
+                    .col(ColumnDef::new(UserStatistics::PeakMmr).integer().null())
                     .col(
                         ColumnDef::new(UserStatistics::CurrentStreak)
                             .integer()

@@ -75,9 +75,7 @@ pub async fn login(
     };
 
     if let Err(e) = auth_session.login(&user).await {
-        return Err(AppError::Service(format!(
-            "Failed to create session: {e}"
-        )));
+        return Err(AppError::Service(format!("Failed to create session: {e}")));
     }
 
     Ok((

@@ -42,9 +42,9 @@ mod tests {
     #[tokio::test]
     async fn test_rate_limit_headers_concept() {
         let mut headers = axum::http::HeaderMap::new();
-        
+
         crate::api::add_rate_limit_headers(&mut headers);
-        
+
         assert!(headers.contains_key("X-Rate-Limit-Limit"));
         assert!(headers.contains_key("X-Rate-Limit-Remaining"));
         assert!(headers.contains_key("X-Rate-Limit-Reset"));
@@ -69,7 +69,7 @@ mod tests {
 
         for endpoint in &endpoints {
             let response = server.method(Method::GET, endpoint).await;
-            
+
             assert_ne!(
                 response.status_code(),
                 StatusCode::NOT_FOUND,
@@ -84,11 +84,10 @@ mod tests {
         let app = create_test_app(Arc::new(db));
         let server = TestServer::new(app).unwrap();
 
-        let response = server
-            .method(Method::GET, "/api/v1/friends")
-            .await;
+        let response = server.method(Method::GET, "/api/v1/friends").await;
 
-        let content_type = response.headers()
+        let content_type = response
+            .headers()
             .get("content-type")
             .map(|v| v.to_str().unwrap_or(""))
             .unwrap_or("");

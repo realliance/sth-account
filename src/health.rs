@@ -1,4 +1,4 @@
-use axum::{http::StatusCode, response::Json, extract::State};
+use axum::{extract::State, http::StatusCode, response::Json};
 use serde_json::{Value, json};
 
 use crate::service::AppState;
@@ -41,17 +41,17 @@ pub async fn readiness_check(State(state): State<AppState>) -> (StatusCode, Json
 #[cfg(test)]
 mod tests {
     use super::*;
+    use crate::test_utils::test_utils::*;
     use axum::http::StatusCode;
     use axum_test::TestServer;
     use std::sync::Arc;
-    use crate::test_utils::test_utils::*;
 
     #[tokio::test]
     async fn test_health_check_always_healthy() {
         let (status, response) = health_check().await;
-        
+
         assert_eq!(status, StatusCode::OK);
-        
+
         let json_value = response.0;
         assert_eq!(json_value["status"], "healthy");
         assert_eq!(json_value["service"], "sth-account");
@@ -65,9 +65,9 @@ mod tests {
         let server = TestServer::new(app).unwrap();
 
         let response = server.get("/ready").await;
-        
+
         assert_eq!(response.status_code(), StatusCode::OK);
-        
+
         let body: serde_json::Value = response.json();
         assert_eq!(body["status"], "ready");
         assert_eq!(body["service"], "sth-account");
@@ -81,21 +81,21 @@ mod tests {
         // This test demonstrates the structure but would require a real failing database
         // to properly test the error path. In a real environment, this would be tested
         // with integration tests against an actual database.
-        
+
         // For now, we test that our code compiles and handles the mock database
         let db = create_failing_mock_db().into_connection();
         let app = create_test_app(Arc::new(db));
         let server = TestServer::new(app).unwrap();
 
         let response = server.get("/ready").await;
-        
+
         // MockDatabase default behavior returns OK, so we expect 200 here
         // In a real integration test with a failing database, this would be 503
         assert!(
-            response.status_code() == StatusCode::OK || 
-            response.status_code() == StatusCode::SERVICE_UNAVAILABLE
+            response.status_code() == StatusCode::OK
+                || response.status_code() == StatusCode::SERVICE_UNAVAILABLE
         );
-        
+
         let body: serde_json::Value = response.json();
         assert_eq!(body["service"], "sth-account");
         assert!(body["timestamp"].is_string());

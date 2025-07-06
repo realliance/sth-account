@@ -12,7 +12,7 @@ use crate::{
     error::{AppError, Result},
     service::AppState,
 };
-use entity::{bot, r#match, user, user_statistics, bot_statistics};
+use entity::{bot, bot_statistics, r#match, user, user_statistics};
 
 #[derive(Debug, Serialize)]
 pub struct MatchResponse {
@@ -507,10 +507,10 @@ pub async fn get_bot_stats(
 mod tests {
     use axum::http::{Method, StatusCode};
     use axum_test::TestServer;
-    use std::sync::Arc;
-    use std::str::FromStr;
-    use uuid::Uuid;
     use sea_orm::prelude::Decimal;
+    use std::str::FromStr;
+    use std::sync::Arc;
+    use uuid::Uuid;
 
     use crate::test_utils::test_utils::*;
 
@@ -664,12 +664,15 @@ mod tests {
         let server = TestServer::new(app).unwrap();
 
         let response = server
-            .method(Method::GET, &format!("/api/v1/matches/user/{user_id}?limit=10"))
+            .method(
+                Method::GET,
+                &format!("/api/v1/matches/user/{user_id}?limit=10"),
+            )
             .await;
 
         assert!(
-            response.status_code() == StatusCode::UNAUTHORIZED || 
-            response.status_code() == StatusCode::BAD_REQUEST,
+            response.status_code() == StatusCode::UNAUTHORIZED
+                || response.status_code() == StatusCode::BAD_REQUEST,
             "Expected UNAUTHORIZED or BAD_REQUEST, got {}",
             response.status_code()
         );
@@ -689,7 +692,10 @@ mod tests {
         let server = TestServer::new(app).unwrap();
 
         let response = server
-            .method(Method::GET, &format!("/api/v1/matches/user/{other_user_id}"))
+            .method(
+                Method::GET,
+                &format!("/api/v1/matches/user/{other_user_id}"),
+            )
             .await;
 
         assert_eq!(response.status_code(), StatusCode::UNAUTHORIZED);

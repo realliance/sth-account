@@ -17,11 +17,7 @@ impl MigrationTrait for Migration {
                             .not_null()
                             .primary_key(),
                     )
-                    .col(
-                        ColumnDef::new(DataExportRequests::UserId)
-                            .uuid()
-                            .not_null(),
-                    )
+                    .col(ColumnDef::new(DataExportRequests::UserId).uuid().not_null())
                     .col(
                         ColumnDef::new(DataExportRequests::ExportType)
                             .string()
@@ -32,11 +28,7 @@ impl MigrationTrait for Migration {
                             .string()
                             .not_null(),
                     )
-                    .col(
-                        ColumnDef::new(DataExportRequests::FilePath)
-                            .string()
-                            .null(),
-                    )
+                    .col(ColumnDef::new(DataExportRequests::FilePath).string().null())
                     .col(
                         ColumnDef::new(DataExportRequests::RequestedAt)
                             .timestamp_with_time_zone()

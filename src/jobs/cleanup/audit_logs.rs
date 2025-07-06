@@ -1,23 +1,27 @@
 use crate::error::Result;
 use chrono::{Duration, Utc};
-use sea_orm::{ColumnTrait, EntityTrait, QueryFilter, DeleteResult};
+use sea_orm::{ColumnTrait, DeleteResult, EntityTrait, QueryFilter};
 use tracing::info;
 
 pub async fn run(db: &sea_orm::DatabaseConnection) -> Result<()> {
     info!("Running cleanup-audit-logs job");
-    
+
     let cutoff_date = Utc::now() - Duration::days(60);
-    
+
     // Hard delete audit logs older than 60 days (they're already soft-deletable)
     let result: DeleteResult = entity::audit_log::Entity::delete_many()
         .filter(
-            entity::audit_log::Column::CreatedAt.lt(cutoff_date)
-                .and(entity::audit_log::Column::DeletedAt.is_null())
+            entity::audit_log::Column::CreatedAt
+                .lt(cutoff_date)
+                .and(entity::audit_log::Column::DeletedAt.is_null()),
         )
         .exec(db)
         .await?;
-    
-    info!("Cleaned up {} audit log entries older than 60 days", result.rows_affected);
+
+    info!(
+        "Cleaned up {} audit log entries older than 60 days",
+        result.rows_affected
+    );
     Ok(())
 }
 
@@ -25,19 +29,22 @@ pub async fn run(db: &sea_orm::DatabaseConnection) -> Result<()> {
 mod tests {
     use super::*;
     use chrono::{Duration, Utc};
-    use sea_orm::{Database, DatabaseConnection, EntityTrait, ActiveModelTrait, Set};
-    use uuid::Uuid;
     use entity::{audit_log, user};
+    use sea_orm::{ActiveModelTrait, Database, DatabaseConnection, EntityTrait, Set};
+    use uuid::Uuid;
 
-    async fn create_test_db_connection() -> std::result::Result<DatabaseConnection, Box<dyn std::error::Error>> {
+    async fn create_test_db_connection()
+    -> std::result::Result<DatabaseConnection, Box<dyn std::error::Error>> {
         let database_url = std::env::var("TEST_DATABASE_URL")
             .unwrap_or_else(|_| "postgresql://localhost/sth_account_test".to_string());
-        
+
         let db = Database::connect(&database_url).await?;
         Ok(db)
     }
 
-    async fn setup_test_user(db: &DatabaseConnection) -> std::result::Result<user::Model, Box<dyn std::error::Error>> {
+    async fn setup_test_user(
+        db: &DatabaseConnection,
+    ) -> std::result::Result<user::Model, Box<dyn std::error::Error>> {
         let user_model = user::ActiveModel {
             id: Set(Uuid::new_v4()),
             username: Set(format!("testuser_{}", Uuid::new_v4())),
@@ -55,7 +62,7 @@ mod tests {
             settings: Set(None),
             deleted_at: Set(None),
         };
-        
+
         let user = user_model.insert(db).await?;
         Ok(user)
     }
@@ -63,9 +70,13 @@ mod tests {
     #[tokio::test]
     #[ignore = "requires PostgreSQL database"]
     async fn test_cleanup_audit_logs_removes_old_entries() {
-        let db = create_test_db_connection().await.expect("Failed to connect to test database");
-        let user = setup_test_user(&db).await.expect("Failed to create test user");
-        
+        let db = create_test_db_connection()
+            .await
+            .expect("Failed to connect to test database");
+        let user = setup_test_user(&db)
+            .await
+            .expect("Failed to create test user");
+
         // Create an old audit log entry (older than 60 days)
         let old_date = Utc::now() - Duration::days(65);
         let old_audit_log = audit_log::ActiveModel {
@@ -78,19 +89,22 @@ mod tests {
             created_at: Set(old_date.into()),
             deleted_at: Set(None),
         };
-        old_audit_log.insert(&db).await.expect("Failed to insert test audit log");
-        
+        old_audit_log
+            .insert(&db)
+            .await
+            .expect("Failed to insert test audit log");
+
         // Run the cleanup job
         let result = run(&db).await;
         assert!(result.is_ok(), "Cleanup job should succeed");
-        
+
         // Verify the old entry was deleted
         let remaining_logs = audit_log::Entity::find()
             .filter(audit_log::Column::UserId.eq(user.id))
             .all(&db)
             .await
             .expect("Failed to query audit logs");
-        
+
         assert_eq!(remaining_logs.len(), 0, "Old audit logs should be deleted");
     }
 }

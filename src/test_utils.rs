@@ -24,10 +24,7 @@ pub mod test_utils {
         queue::TestQueueProvider,
         service::AppState,
     };
-    use entity::{
-        audit_log, bot, data_export_requests, friendship, user,
-        user_statistics,
-    };
+    use entity::{audit_log, bot, data_export_requests, friendship, user, user_statistics};
 
     /// Create a test app with mock database and in-memory sessions
     pub fn create_test_app(db: Arc<DatabaseConnection>) -> Router {

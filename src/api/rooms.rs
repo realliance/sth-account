@@ -396,7 +396,8 @@ pub async fn invite_to_room(
     if user::Entity::find_by_id(request.invitee_id)
         .one(state.db.as_ref())
         .await
-        .map_err(AppError::Database)?.is_none()
+        .map_err(AppError::Database)?
+        .is_none()
     {
         return Err(AppError::NotFound("User to invite not found".to_string()));
     }
@@ -511,12 +512,9 @@ mod tests {
     use axum_test::TestServer;
     use serde_json::json;
     use std::sync::Arc;
-    
 
     use super::generate_room_code;
     use crate::test_utils::test_utils::*;
-    
-
 
     #[tokio::test]
     async fn test_create_room_unauthorized() {

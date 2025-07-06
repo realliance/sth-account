@@ -4,9 +4,7 @@ use axum::{
     response::Json,
 };
 use chrono::Utc;
-use sea_orm::{
-    ActiveModelTrait, ColumnTrait, EntityTrait, QueryFilter, Set,
-};
+use sea_orm::{ActiveModelTrait, ColumnTrait, EntityTrait, QueryFilter, Set};
 use serde::{Deserialize, Serialize};
 use uuid::Uuid;
 
@@ -16,7 +14,7 @@ use crate::{
     error::{AppError, Result},
     service::AppState,
 };
-use entity::{friendship, user, notifications};
+use entity::{friendship, notifications, user};
 
 #[cfg(test)]
 mod tests {
@@ -41,9 +39,10 @@ mod tests {
 
         for (endpoint, method) in &endpoints {
             let response = server.method(method.clone(), endpoint).await;
-            
+
             assert!(
-                response.status_code() == StatusCode::UNAUTHORIZED || response.status_code() == StatusCode::FORBIDDEN,
+                response.status_code() == StatusCode::UNAUTHORIZED
+                    || response.status_code() == StatusCode::FORBIDDEN,
                 "Endpoint {} {} should require authentication, got {}",
                 method,
                 endpoint,
@@ -63,7 +62,8 @@ mod tests {
             .json(&json!({"addressee_username": "test"}))
             .await;
         assert!(
-            response.status_code() == StatusCode::UNAUTHORIZED || response.status_code() == StatusCode::FORBIDDEN,
+            response.status_code() == StatusCode::UNAUTHORIZED
+                || response.status_code() == StatusCode::FORBIDDEN,
             "Friend request endpoint should require auth"
         );
     }
@@ -86,9 +86,9 @@ mod tests {
             .await;
 
         assert!(
-            response.status_code() == StatusCode::BAD_REQUEST || 
-            response.status_code() == StatusCode::UNPROCESSABLE_ENTITY ||
-            response.status_code() == StatusCode::UNAUTHORIZED,
+            response.status_code() == StatusCode::BAD_REQUEST
+                || response.status_code() == StatusCode::UNPROCESSABLE_ENTITY
+                || response.status_code() == StatusCode::UNAUTHORIZED,
             "Should reject invalid friend request data"
         );
     }
@@ -97,7 +97,7 @@ mod tests {
     async fn test_send_friend_request_success() {
         let requester_id = Uuid::new_v4();
         let target_id = Uuid::new_v4();
-        
+
         let requester = sample_user(Some(requester_id));
         let mut target_user = sample_user(Some(target_id));
         target_user.username = "targetuser".to_string();
@@ -171,7 +171,7 @@ mod tests {
     async fn test_send_friend_request_already_exists() {
         let requester_id = Uuid::new_v4();
         let target_id = Uuid::new_v4();
-        
+
         let requester = sample_user(Some(requester_id));
         let mut target_user = sample_user(Some(target_id));
         target_user.username = "targetuser".to_string();
@@ -207,7 +207,7 @@ mod tests {
         let requester_id = Uuid::new_v4();
         let addressee_id = Uuid::new_v4();
         let friendship_id = Uuid::new_v4();
-        
+
         let addressee = sample_user(Some(addressee_id));
         let mut requester = sample_user(Some(requester_id));
         requester.username = "requesteruser".to_string();
@@ -243,13 +243,16 @@ mod tests {
         let server = TestServer::new(app).unwrap();
 
         let response = server
-            .method(Method::POST, &format!("/api/v1/friends/requests/{friendship_id}/respond"))
+            .method(
+                Method::POST,
+                &format!("/api/v1/friends/requests/{friendship_id}/respond"),
+            )
             .json(&json!({"accept": true}))
             .await;
 
         assert!(
-            response.status_code() == StatusCode::UNAUTHORIZED || 
-            response.status_code() == StatusCode::NOT_FOUND,
+            response.status_code() == StatusCode::UNAUTHORIZED
+                || response.status_code() == StatusCode::NOT_FOUND,
             "Expected UNAUTHORIZED or NOT_FOUND, got {}",
             response.status_code()
         );
@@ -259,7 +262,7 @@ mod tests {
     async fn test_get_friends_success() {
         let user_id = Uuid::new_v4();
         let friend_id = Uuid::new_v4();
-        
+
         let user = sample_user(Some(user_id));
         let mut friend = sample_user(Some(friend_id));
         friend.username = "frienduser".to_string();
@@ -282,9 +285,7 @@ mod tests {
         let app = create_test_app(Arc::new(db));
         let server = TestServer::new(app).unwrap();
 
-        let response = server
-            .method(Method::GET, "/api/v1/friends")
-            .await;
+        let response = server.method(Method::GET, "/api/v1/friends").await;
 
         assert_eq!(response.status_code(), StatusCode::UNAUTHORIZED);
     }
@@ -293,7 +294,7 @@ mod tests {
     async fn test_get_pending_friend_requests_success() {
         let user_id = Uuid::new_v4();
         let requester_id = Uuid::new_v4();
-        
+
         let user = sample_user(Some(user_id));
         let mut requester = sample_user(Some(requester_id));
         requester.username = "requesteruser".to_string();
@@ -316,9 +317,7 @@ mod tests {
         let app = create_test_app(Arc::new(db));
         let server = TestServer::new(app).unwrap();
 
-        let response = server
-            .method(Method::GET, "/api/v1/friends/requests")
-            .await;
+        let response = server.method(Method::GET, "/api/v1/friends/requests").await;
 
         assert_eq!(response.status_code(), StatusCode::UNAUTHORIZED);
     }
@@ -328,7 +327,7 @@ mod tests {
         let user_id = Uuid::new_v4();
         let friend_id = Uuid::new_v4();
         let friendship_id = Uuid::new_v4();
-        
+
         let user = sample_user(Some(user_id));
 
         let friendship = entity::friendship::Model {
@@ -396,7 +395,9 @@ pub async fn send_friend_request(
 ) -> Result<(StatusCode, HeaderMap, Json<FriendshipResponse>)> {
     add_rate_limit_headers(&mut headers);
 
-    let current_user = auth_session.user.ok_or(AppError::Auth("Not authenticated".to_string()))?;
+    let current_user = auth_session
+        .user
+        .ok_or(AppError::Auth("Not authenticated".to_string()))?;
 
     // Find the target user by username
     let target_user = user::Entity::find()
@@ -408,18 +409,20 @@ pub async fn send_friend_request(
     // Check if friendship already exists
     let existing_friendship = friendship::Entity::find()
         .filter(
-            friendship::Column::RequesterId.eq(current_user.id)
+            friendship::Column::RequesterId
+                .eq(current_user.id)
                 .and(friendship::Column::AddresseeId.eq(target_user.id))
-                .or(
-                    friendship::Column::RequesterId.eq(target_user.id)
-                        .and(friendship::Column::AddresseeId.eq(current_user.id))
-                )
+                .or(friendship::Column::RequesterId
+                    .eq(target_user.id)
+                    .and(friendship::Column::AddresseeId.eq(current_user.id))),
         )
         .one(&*state.db)
         .await?;
 
     if existing_friendship.is_some() {
-        return Err(AppError::BadRequest("Friendship already exists or is pending".to_string()));
+        return Err(AppError::BadRequest(
+            "Friendship already exists or is pending".to_string(),
+        ));
     }
 
     // Create friendship request
@@ -478,7 +481,9 @@ pub async fn respond_to_friend_request(
 ) -> Result<(StatusCode, HeaderMap, Json<FriendshipResponse>)> {
     add_rate_limit_headers(&mut headers);
 
-    let current_user = auth_session.user.ok_or(AppError::Auth("Not authenticated".to_string()))?;
+    let current_user = auth_session
+        .user
+        .ok_or(AppError::Auth("Not authenticated".to_string()))?;
 
     // Find the friendship request
     let friendship = friendship::Entity::find_by_id(friendship_id)
@@ -493,10 +498,16 @@ pub async fn respond_to_friend_request(
 
     // Verify request is still pending
     if friendship.status != "Pending" {
-        return Err(AppError::BadRequest("Friend request is no longer pending".to_string()));
+        return Err(AppError::BadRequest(
+            "Friend request is no longer pending".to_string(),
+        ));
     }
 
-    let new_status = if request.accept { "Accepted" } else { "Declined" };
+    let new_status = if request.accept {
+        "Accepted"
+    } else {
+        "Declined"
+    };
 
     // Update friendship status
     let mut friendship_active: friendship::ActiveModel = friendship.clone().into();
@@ -559,16 +570,18 @@ pub async fn get_friends(
 ) -> Result<(StatusCode, HeaderMap, Json<Vec<FriendshipResponse>>)> {
     add_rate_limit_headers(&mut headers);
 
-    let current_user = auth_session.user.ok_or(AppError::Auth("Not authenticated".to_string()))?;
+    let current_user = auth_session
+        .user
+        .ok_or(AppError::Auth("Not authenticated".to_string()))?;
 
     // Get all accepted friendships where user is either requester or addressee
     let friendships = friendship::Entity::find()
         .filter(
-            friendship::Column::Status.eq("Accepted")
-                .and(
-                    friendship::Column::RequesterId.eq(current_user.id)
-                        .or(friendship::Column::AddresseeId.eq(current_user.id))
-                )
+            friendship::Column::Status.eq("Accepted").and(
+                friendship::Column::RequesterId
+                    .eq(current_user.id)
+                    .or(friendship::Column::AddresseeId.eq(current_user.id)),
+            ),
         )
         .all(&*state.db)
         .await?;
@@ -584,9 +597,7 @@ pub async fn get_friends(
         };
 
         // Get friend info
-        let friend = user::Entity::find_by_id(friend_id)
-            .one(&*state.db)
-            .await?;
+        let friend = user::Entity::find_by_id(friend_id).one(&*state.db).await?;
 
         let friend_info = friend.map(|f| FriendInfo {
             id: f.id,
@@ -618,13 +629,16 @@ pub async fn get_pending_friend_requests(
 ) -> Result<(StatusCode, HeaderMap, Json<Vec<FriendshipResponse>>)> {
     add_rate_limit_headers(&mut headers);
 
-    let current_user = auth_session.user.ok_or(AppError::Auth("Not authenticated".to_string()))?;
+    let current_user = auth_session
+        .user
+        .ok_or(AppError::Auth("Not authenticated".to_string()))?;
 
     // Get pending friend requests where current user is the addressee
     let friendships = friendship::Entity::find()
         .filter(
-            friendship::Column::Status.eq("Pending")
-                .and(friendship::Column::AddresseeId.eq(current_user.id))
+            friendship::Column::Status
+                .eq("Pending")
+                .and(friendship::Column::AddresseeId.eq(current_user.id)),
         )
         .all(&*state.db)
         .await?;
@@ -668,7 +682,9 @@ pub async fn remove_friend(
 ) -> Result<(StatusCode, HeaderMap)> {
     add_rate_limit_headers(&mut headers);
 
-    let current_user = auth_session.user.ok_or(AppError::Auth("Not authenticated".to_string()))?;
+    let current_user = auth_session
+        .user
+        .ok_or(AppError::Auth("Not authenticated".to_string()))?;
 
     // Find the friendship
     let friendship = friendship::Entity::find_by_id(friendship_id)

@@ -11,37 +11,12 @@ impl MigrationTrait for Migration {
                 Table::create()
                     .table(AuditLog::Table)
                     .if_not_exists()
-                    .col(
-                        ColumnDef::new(AuditLog::Id)
-                            .uuid()
-                            .not_null()
-                            .primary_key(),
-                    )
-                    .col(
-                        ColumnDef::new(AuditLog::UserId)
-                            .uuid()
-                            .not_null(),
-                    )
-                    .col(
-                        ColumnDef::new(AuditLog::ActionType)
-                            .string()
-                            .not_null(),
-                    )
-                    .col(
-                        ColumnDef::new(AuditLog::Details)
-                            .json()
-                            .null(),
-                    )
-                    .col(
-                        ColumnDef::new(AuditLog::IpAddress)
-                            .string()
-                            .not_null(),
-                    )
-                    .col(
-                        ColumnDef::new(AuditLog::ModeratorId)
-                            .uuid()
-                            .null(),
-                    )
+                    .col(ColumnDef::new(AuditLog::Id).uuid().not_null().primary_key())
+                    .col(ColumnDef::new(AuditLog::UserId).uuid().not_null())
+                    .col(ColumnDef::new(AuditLog::ActionType).string().not_null())
+                    .col(ColumnDef::new(AuditLog::Details).json().null())
+                    .col(ColumnDef::new(AuditLog::IpAddress).string().not_null())
+                    .col(ColumnDef::new(AuditLog::ModeratorId).uuid().null())
                     .col(
                         ColumnDef::new(AuditLog::CreatedAt)
                             .timestamp_with_time_zone()

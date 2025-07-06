@@ -52,10 +52,7 @@ pub struct SeaOrmSessionStore {
 
 impl SeaOrmSessionStore {
     pub fn new(db: Arc<DatabaseConnection>) -> Self {
-        Self { 
-            db,
-            context: None,
-        }
+        Self { db, context: None }
     }
 
     pub fn with_context(mut self, context: SessionContext) -> Self {
@@ -115,7 +112,9 @@ impl SessionStore for SeaOrmSessionStore {
                 .map_err(|e| session_store::Error::Backend(e.to_string()))?;
         } else {
             // Extract user_id from session data, then from context, fallback to placeholder if not found
-            let user_id = session_record.data.get("user_id")
+            let user_id = session_record
+                .data
+                .get("user_id")
                 .and_then(|v| v.as_str())
                 .and_then(|s| Uuid::parse_str(s).ok())
                 .or_else(|| self.context.as_ref().and_then(|c| c.user_id))
@@ -123,7 +122,9 @@ impl SessionStore for SeaOrmSessionStore {
 
             // Get device info and IP address from context if available
             let device_info = self.context.as_ref().and_then(|c| c.device_info.clone());
-            let ip_address = self.context.as_ref()
+            let ip_address = self
+                .context
+                .as_ref()
                 .and_then(|c| c.ip_address.clone())
                 .unwrap_or_else(|| "127.0.0.1".to_string());
 
