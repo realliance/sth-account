@@ -109,20 +109,22 @@ pub async fn run_service() -> Result<()> {
             .build(),
     )
     // All OpenAPI annotated routes
+    .routes(routes!(auth_handlers::login))
+    .routes(routes!(auth_handlers::logout))
+    .routes(routes!(auth_handlers::me))
     .routes(routes!(
-        auth_handlers::login,
-        auth_handlers::logout,
-        auth_handlers::me,
         users::create_user,
         users::get_user,
         users::update_user,
-        users::delete_user,
+        users::delete_user
+    ))
+    .routes(routes!(
         bots::create_bot,
         bots::get_bot,
         bots::update_bot,
-        bots::delete_bot,
-        bots::get_user_bots
+        bots::delete_bot
     ))
+    .routes(routes!(bots::get_user_bots))
     // Lobby routes
     .route("/lobbies", get(lobbies::get_lobbies))
     .route("/lobbies", post(lobbies::create_lobby))
