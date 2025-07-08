@@ -14,7 +14,7 @@ impl Config {
                 .unwrap_or_else(|_| "postgresql://localhost/sth_account".to_string()),
             bind_address: env::var("BIND_ADDRESS").unwrap_or_else(|_| "0.0.0.0".to_string()),
             bind_port: env::var("BIND_PORT")
-                .unwrap_or_else(|_| "3000".to_string())
+                .unwrap_or_else(|_| "8080".to_string())
                 .parse()
                 .map_err(|_| {
                     crate::error::AppError::Config("Invalid BIND_PORT value".to_string())
