@@ -24,7 +24,6 @@ pub async fn run_job(job_type: String) -> Result<()> {
         // Statistics jobs
         "update-statistics" => statistics::update::run(&db).await,
         "mmr-recalculation" => statistics::mmr_recalculation::run(&db).await,
-        "generate-daily-stats" => statistics::daily_stats::run(&db).await,
 
         // Monitoring jobs
         "heartbeat-check" => monitoring::heartbeat::run(&db).await,

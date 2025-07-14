@@ -180,6 +180,7 @@ async fn recalculate_bot_mmr(db: &sea_orm::DatabaseConnection) -> Result<u64> {
 #[derive(Debug, Clone)]
 struct Participant {
     id: uuid::Uuid,
+    #[allow(dead_code)]
     score: i32,
     placement: i32,
 }

@@ -173,7 +173,7 @@ async fn update_user_last_active(state: &AppState, user_id: uuid::Uuid) -> Resul
 
     let mut user_update: user::ActiveModel = user_model.into();
     user_update.last_active_at = Set(Some(Utc::now().into()));
-    
+
     user_update.update(state.db.as_ref()).await?;
     Ok(())
 }
@@ -266,7 +266,6 @@ mod tests {
                 .contains("Username already exists")
         );
     }
-
 
     #[tokio::test]
     async fn test_get_user_not_found() {

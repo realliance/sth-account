@@ -1,14 +1,9 @@
 #[cfg(test)]
 pub mod test_utils {
     use axum::Router;
-    use axum::http::Method;
     use axum_login::AuthManagerLayerBuilder;
-    use axum_test::TestServer;
     use chrono::Utc;
-    use reqwest::Client;
-    use reqwest_cookie_store::{CookieStore, CookieStoreMutex};
     use sea_orm::{DatabaseBackend, DatabaseConnection, MockDatabase, MockExecResult};
-    use serde_json::json;
     use std::sync::Arc;
     use tower_sessions::{Expiry, SessionManagerLayer};
     use tower_sessions_memory_store::MemoryStore;
@@ -24,7 +19,7 @@ pub mod test_utils {
         queue::TestQueueProvider,
         service::AppState,
     };
-    use entity::{audit_log, bot, data_export_requests, friendship, user, user_statistics};
+    use entity::{bot, user};
 
     /// Create a test app with mock database and in-memory sessions
     pub fn create_test_app(db: Arc<DatabaseConnection>) -> Router {
@@ -275,236 +270,15 @@ pub mod test_utils {
         }
     }
 
-    /// Create a no-rows-affected mock exec result
-    pub fn mock_exec_no_rows() -> MockExecResult {
-        MockExecResult {
-            last_insert_id: 0,
-            rows_affected: 0,
-        }
-    }
 
-    /// Helper to perform login and get authenticated server
-    pub async fn login_test_user(
-        server: &TestServer,
-        username: &str,
-        password: &str,
-    ) -> Result<(), String> {
-        let login_request = json!({
-            "username": username,
-            "password": password
-        });
 
-        let response = server
-            .method(Method::POST, "/auth/login")
-            .form(&login_request)
-            .await;
 
-        if response.status_code().is_success() {
-            Ok(())
-        } else {
-            Err(format!(
-                "Login failed with status: {}",
-                response.status_code()
-            ))
-        }
-    }
 
-    /// Create an authenticated test server with a logged-in user
-    pub async fn create_authenticated_test_server(
-        db: Arc<DatabaseConnection>,
-        user: &user::Model,
-    ) -> TestServer {
-        let app = create_test_app(db);
-        let server = TestServer::new(app).unwrap();
 
-        // Attempt to login the user - this may fail in tests due to session issues
-        let _ = login_test_user(&server, &user.username, "password123").await;
 
-        server
-    }
 
-    /// Create an authenticated reqwest client that maintains cookies
-    pub async fn create_authenticated_client(
-        base_url: &str,
-        username: &str,
-        password: &str,
-    ) -> Result<Client, Box<dyn std::error::Error>> {
-        // Create a cookie store
-        let cookie_store = CookieStore::default();
-        let cookie_store = CookieStoreMutex::new(cookie_store);
-        let cookie_store = Arc::new(cookie_store);
 
-        // Create reqwest client with cookie support
-        let client = Client::builder()
-            .cookie_provider(Arc::clone(&cookie_store))
-            .build()?;
 
-        // Perform login to get session cookie
-        let login_data = json!({
-            "username": username,
-            "password": password
-        });
-
-        let response = client
-            .post(format!("{base_url}/auth/login"))
-            .form(&login_data)
-            .send()
-            .await?;
-
-        if !response.status().is_success() {
-            return Err(format!("Login failed with status: {}", response.status()).into());
-        }
-
-        Ok(client)
-    }
-
-    /// Helper struct to manage test server with authenticated client
-    pub struct AuthenticatedTestClient {
-        pub server: TestServer,
-        pub client: Client,
-        pub base_url: String,
-    }
-
-    impl AuthenticatedTestClient {
-        pub async fn new(
-            db: Arc<DatabaseConnection>,
-            username: &str,
-            password: &str,
-        ) -> Result<Self, Box<dyn std::error::Error>> {
-            let app = create_test_app(db);
-            let server = TestServer::new(app).unwrap();
-
-            // Get the server address - TestServer::server_address() returns Option<SocketAddr>
-            let server_addr = server
-                .server_address()
-                .ok_or("Failed to get server address")?;
-            let base_url = format!("http://{server_addr}");
-
-            let client = create_authenticated_client(&base_url, username, password).await?;
-
-            Ok(Self {
-                server,
-                client,
-                base_url,
-            })
-        }
-
-        pub async fn get(&self, path: &str) -> Result<reqwest::Response, reqwest::Error> {
-            self.client
-                .get(format!("{}{}", self.base_url, path))
-                .send()
-                .await
-        }
-
-        pub async fn post(
-            &self,
-            path: &str,
-            json: &serde_json::Value,
-        ) -> Result<reqwest::Response, reqwest::Error> {
-            self.client
-                .post(format!("{}{}", self.base_url, path))
-                .json(json)
-                .send()
-                .await
-        }
-
-        pub async fn patch(
-            &self,
-            path: &str,
-            json: &serde_json::Value,
-        ) -> Result<reqwest::Response, reqwest::Error> {
-            self.client
-                .patch(format!("{}{}", self.base_url, path))
-                .json(json)
-                .send()
-                .await
-        }
-
-        pub async fn delete(&self, path: &str) -> Result<reqwest::Response, reqwest::Error> {
-            self.client
-                .delete(format!("{}{}", self.base_url, path))
-                .send()
-                .await
-        }
-    }
-
-    /// Create a sample friendship model for testing
-    pub fn sample_friendship(
-        requester_id: Uuid,
-        addressee_id: Uuid,
-        status: &str,
-    ) -> friendship::Model {
-        friendship::Model {
-            id: Uuid::new_v4(),
-            requester_id,
-            addressee_id,
-            status: status.to_string(),
-            created_at: Utc::now().into(),
-            updated_at: Utc::now().into(),
-        }
-    }
-
-    /// Create a sample notification model for testing
-    pub fn sample_notification(
-        user_id: Uuid,
-        notification_type: &str,
-    ) -> entity::notifications::Model {
-        entity::notifications::Model {
-            id: Uuid::new_v4(),
-            user_id,
-            r#type: notification_type.to_string(),
-            title: "Test Notification".to_string(),
-            message: "This is a test notification".to_string(),
-            related_id: None,
-            read: false,
-            created_at: Utc::now().into(),
-            expires_at: None,
-        }
-    }
-
-    /// Create a sample user statistics model for testing
-    pub fn sample_user_statistics(user_id: Uuid) -> user_statistics::Model {
-        user_statistics::Model {
-            user_id,
-            total_games: 10,
-            wins: 3,
-            second_place: 2,
-            third_place: 3,
-            fourth_place: 2,
-            average_score: Some(sea_orm::prelude::Decimal::new(25000, 0)),
-            peak_mmr: Some(1200),
-            current_streak: 2,
-            last_game_at: Some(Utc::now().into()),
-        }
-    }
-
-    /// Create a sample data export request model for testing
-    pub fn sample_export_request(user_id: Uuid, export_type: &str) -> data_export_requests::Model {
-        data_export_requests::Model {
-            id: Uuid::new_v4(),
-            user_id,
-            export_type: export_type.to_string(),
-            status: "Pending".to_string(),
-            file_path: None,
-            requested_at: Utc::now().into(),
-            completed_at: None,
-            expires_at: None,
-        }
-    }
-
-    /// Create a sample audit log model for testing
-    pub fn sample_audit_log(user_id: Uuid, action_type: &str) -> audit_log::Model {
-        audit_log::Model {
-            id: Uuid::new_v4(),
-            user_id,
-            action_type: action_type.to_string(),
-            details: Some(serde_json::json!({"test": "data"})),
-            ip_address: "127.0.0.1".to_string(),
-            moderator_id: None,
-            created_at: Utc::now().into(),
-            deleted_at: None,
-        }
-    }
 
     /// Create an admin user for testing
     pub fn sample_admin_user(id: Option<Uuid>) -> user::Model {
