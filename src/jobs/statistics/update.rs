@@ -211,22 +211,22 @@ async fn calculate_user_stats_from_matches(
         let (score, placement) = if match_data.participant1_id == user_id {
             (
                 match_data.participant1_score.unwrap_or(0),
-                get_placement_from_scores(&match_data, match_data.participant1_score.unwrap_or(0)),
+                get_placement_from_scores(match_data, match_data.participant1_score.unwrap_or(0)),
             )
         } else if match_data.participant2_id == user_id {
             (
                 match_data.participant2_score.unwrap_or(0),
-                get_placement_from_scores(&match_data, match_data.participant2_score.unwrap_or(0)),
+                get_placement_from_scores(match_data, match_data.participant2_score.unwrap_or(0)),
             )
         } else if match_data.participant3_id == user_id {
             (
                 match_data.participant3_score.unwrap_or(0),
-                get_placement_from_scores(&match_data, match_data.participant3_score.unwrap_or(0)),
+                get_placement_from_scores(match_data, match_data.participant3_score.unwrap_or(0)),
             )
         } else if match_data.participant4_id == Some(user_id) {
             (
                 match_data.participant4_score.unwrap_or(0),
-                get_placement_from_scores(&match_data, match_data.participant4_score.unwrap_or(0)),
+                get_placement_from_scores(match_data, match_data.participant4_score.unwrap_or(0)),
             )
         } else {
             continue;
@@ -244,13 +244,11 @@ async fn calculate_user_stats_from_matches(
                 streak_count = 1;
                 last_was_win = true;
             }
+        } else if !last_was_win {
+            streak_count -= 1;
         } else {
-            if !last_was_win {
-                streak_count -= 1;
-            } else {
-                streak_count = -1;
-                last_was_win = false;
-            }
+            streak_count = -1;
+            last_was_win = false;
         }
 
         if let Some(completed_at) = match_data.completed_at {
@@ -309,22 +307,22 @@ async fn calculate_bot_stats_from_matches(
         let (score, placement) = if match_data.participant1_id == bot_id {
             (
                 match_data.participant1_score.unwrap_or(0),
-                get_placement_from_scores(&match_data, match_data.participant1_score.unwrap_or(0)),
+                get_placement_from_scores(match_data, match_data.participant1_score.unwrap_or(0)),
             )
         } else if match_data.participant2_id == bot_id {
             (
                 match_data.participant2_score.unwrap_or(0),
-                get_placement_from_scores(&match_data, match_data.participant2_score.unwrap_or(0)),
+                get_placement_from_scores(match_data, match_data.participant2_score.unwrap_or(0)),
             )
         } else if match_data.participant3_id == bot_id {
             (
                 match_data.participant3_score.unwrap_or(0),
-                get_placement_from_scores(&match_data, match_data.participant3_score.unwrap_or(0)),
+                get_placement_from_scores(match_data, match_data.participant3_score.unwrap_or(0)),
             )
         } else if match_data.participant4_id == Some(bot_id) {
             (
                 match_data.participant4_score.unwrap_or(0),
-                get_placement_from_scores(&match_data, match_data.participant4_score.unwrap_or(0)),
+                get_placement_from_scores(match_data, match_data.participant4_score.unwrap_or(0)),
             )
         } else {
             continue;
@@ -341,13 +339,11 @@ async fn calculate_bot_stats_from_matches(
                 streak_count = 1;
                 last_was_win = true;
             }
+        } else if !last_was_win {
+            streak_count -= 1;
         } else {
-            if !last_was_win {
-                streak_count -= 1;
-            } else {
-                streak_count = -1;
-                last_was_win = false;
-            }
+            streak_count = -1;
+            last_was_win = false;
         }
 
         if let Some(completed_at) = match_data.completed_at {
