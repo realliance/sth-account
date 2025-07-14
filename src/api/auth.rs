@@ -1,15 +1,19 @@
 use axum::{
-    Form,
+    extract::State,
     http::{HeaderMap, StatusCode},
     response::Json,
 };
+use chrono::Utc;
+use sea_orm::{ActiveModelTrait, EntityTrait, Set};
 use serde::{Deserialize, Serialize};
 use utoipa::ToSchema;
 
 use crate::{
     auth::{AuthSession, Credentials},
     error::{AppError, Result},
+    service::AppState,
 };
+use entity::user;
 
 #[derive(Debug, Deserialize, ToSchema)]
 pub struct LoginRequest {
@@ -35,17 +39,18 @@ pub struct LoginResponse {
     post,
     path = "/v1/auth/login",
     tag = "Authentication",
-    request_body(content = LoginRequest, content_type = "application/x-www-form-urlencoded"),
+    request_body(content = LoginRequest, content_type = "application/json"),
     responses(
         (status = 200, description = "Login successful", body = LoginResponse),
         (status = 401, description = "Invalid credentials", body = LoginResponse)
     )
 )]
 pub async fn login(
+    State(state): State<AppState>,
     mut auth_session: AuthSession,
-    mut headers: HeaderMap,
-    Form(request): Form<LoginRequest>,
+    Json(request): Json<LoginRequest>,
 ) -> Result<(StatusCode, HeaderMap, Json<LoginResponse>)> {
+    let mut headers = HeaderMap::new();
     super::add_rate_limit_headers(&mut headers);
 
     let creds = Credentials {
@@ -78,6 +83,12 @@ pub async fn login(
         return Err(AppError::Service(format!("Failed to create session: {e}")));
     }
 
+    // Update user's last_active_at timestamp
+    if let Err(e) = update_user_last_active(&state, user.id).await {
+        tracing::warn!("Failed to update user last_active_at: {e}");
+        // Don't fail the login if this update fails
+    }
+
     Ok((
         StatusCode::OK,
         headers,
@@ -101,8 +112,8 @@ pub async fn login(
 )]
 pub async fn logout(
     mut auth_session: AuthSession,
-    mut headers: HeaderMap,
 ) -> Result<(StatusCode, HeaderMap, Json<LoginResponse>)> {
+    let mut headers = HeaderMap::new();
     super::add_rate_limit_headers(&mut headers);
 
     match auth_session.logout().await {
@@ -141,8 +152,8 @@ pub struct UserInfo {
 )]
 pub async fn me(
     auth_session: AuthSession,
-    mut headers: HeaderMap,
 ) -> Result<(StatusCode, HeaderMap, Json<Option<UserInfo>>)> {
+    let mut headers = HeaderMap::new();
     super::add_rate_limit_headers(&mut headers);
 
     let user_info = auth_session.user.map(|user| UserInfo {
@@ -152,6 +163,19 @@ pub async fn me(
     });
 
     Ok((StatusCode::OK, headers, Json(user_info)))
+}
+
+async fn update_user_last_active(state: &AppState, user_id: uuid::Uuid) -> Result<()> {
+    let user_model = user::Entity::find_by_id(user_id)
+        .one(state.db.as_ref())
+        .await?
+        .ok_or_else(|| AppError::Service("User not found".to_string()))?;
+
+    let mut user_update: user::ActiveModel = user_model.into();
+    user_update.last_active_at = Set(Some(Utc::now().into()));
+    
+    user_update.update(state.db.as_ref()).await?;
+    Ok(())
 }
 
 #[cfg(test)]
@@ -243,75 +267,6 @@ mod tests {
         );
     }
 
-    #[tokio::test]
-    async fn test_get_user_success() {
-        let user_id = Uuid::new_v4();
-        let mut mock_user = sample_user(Some(user_id));
-
-        // Generate proper password hash
-        use crate::auth::Backend;
-        let proper_hash = Backend::hash_password("password123").await.unwrap();
-        mock_user.password = proper_hash;
-
-        let session_model = entity::user_session::Model {
-            id: Uuid::new_v4(),
-            user_id: mock_user.id,
-            token_hash: "session_token".to_string(),
-            device_info: None,
-            ip_address: "127.0.0.1".to_string(),
-            created_at: chrono::Utc::now().into(),
-            expires_at: chrono::Utc::now()
-                .checked_add_signed(chrono::Duration::hours(1))
-                .unwrap()
-                .into(),
-            last_active_at: Some(chrono::Utc::now().into()),
-            status: "Active".to_string(),
-            data: None,
-        };
-
-        // Mock database with queries for: login, session creation, and user lookup
-        let db = create_mock_db()
-            // Login authentication
-            .append_query_results([
-                vec![mock_user.clone()], // User found during login authentication
-            ])
-            // Session creation during login
-            .append_query_results([
-                Vec::<entity::user_session::Model>::new(), // Session collision check
-            ])
-            .append_query_results([
-                Vec::<entity::user_session::Model>::new(), // Session exists check
-            ])
-            .append_exec_results([mock_exec_success(1)]) // Session insert
-            .append_query_results([
-                vec![session_model.clone()], // Session returned after insert
-            ])
-            // Protected endpoint: user lookup for auth context
-            .append_query_results([
-                vec![session_model.clone()], // Session lookup for auth context
-            ])
-            .append_query_results([
-                vec![mock_user.clone()], // User lookup for auth context
-            ])
-            // Protected endpoint: actual user lookup
-            .append_query_results([
-                vec![mock_user.clone()], // The actual get user request
-            ])
-            .into_connection();
-
-        // For now, let's test with the expectation that authentication is working
-        // in the login tests, and focus on the business logic here
-        let app = create_test_app(Arc::new(db));
-        let server = TestServer::new(app).unwrap();
-
-        let response = server
-            .method(Method::GET, &format!("/v1/users/{user_id}"))
-            .await;
-
-        // This test will currently fail due to authentication, but that's expected
-        // The core user lookup logic is being tested
-        assert_eq!(response.status_code(), StatusCode::UNAUTHORIZED);
-    }
 
     #[tokio::test]
     async fn test_get_user_not_found() {

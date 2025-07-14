@@ -404,9 +404,9 @@ pub struct RespondToFriendRequestRequest {
 pub async fn send_friend_request(
     State(state): State<AppState>,
     auth_session: AuthSession,
-    mut headers: HeaderMap,
     Json(request): Json<SendFriendRequestRequest>,
 ) -> Result<(StatusCode, HeaderMap, Json<FriendshipResponse>)> {
+    let mut headers = HeaderMap::new();
     add_rate_limit_headers(&mut headers);
 
     let current_user = auth_session
@@ -506,10 +506,10 @@ pub async fn send_friend_request(
 pub async fn respond_to_friend_request(
     State(state): State<AppState>,
     auth_session: AuthSession,
-    mut headers: HeaderMap,
     Path(friendship_id): Path<Uuid>,
     Json(request): Json<RespondToFriendRequestRequest>,
 ) -> Result<(StatusCode, HeaderMap, Json<FriendshipResponse>)> {
+    let mut headers = HeaderMap::new();
     add_rate_limit_headers(&mut headers);
 
     let current_user = auth_session
@@ -607,8 +607,8 @@ pub async fn respond_to_friend_request(
 pub async fn get_friends(
     State(state): State<AppState>,
     auth_session: AuthSession,
-    mut headers: HeaderMap,
 ) -> Result<(StatusCode, HeaderMap, Json<Vec<FriendshipResponse>>)> {
+    let mut headers = HeaderMap::new();
     add_rate_limit_headers(&mut headers);
 
     let current_user = auth_session
@@ -676,8 +676,8 @@ pub async fn get_friends(
 pub async fn get_pending_friend_requests(
     State(state): State<AppState>,
     auth_session: AuthSession,
-    mut headers: HeaderMap,
 ) -> Result<(StatusCode, HeaderMap, Json<Vec<FriendshipResponse>>)> {
+    let mut headers = HeaderMap::new();
     add_rate_limit_headers(&mut headers);
 
     let current_user = auth_session
@@ -743,9 +743,9 @@ pub async fn get_pending_friend_requests(
 pub async fn remove_friend(
     State(state): State<AppState>,
     auth_session: AuthSession,
-    mut headers: HeaderMap,
     Path(friendship_id): Path<Uuid>,
 ) -> Result<(StatusCode, HeaderMap)> {
+    let mut headers = HeaderMap::new();
     add_rate_limit_headers(&mut headers);
 
     let current_user = auth_session

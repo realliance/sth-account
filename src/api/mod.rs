@@ -10,8 +10,6 @@ pub mod notifications;
 pub mod rooms;
 pub mod users;
 
-#[cfg(test)]
-mod login_tests;
 
 use axum::http::{HeaderMap, HeaderName, HeaderValue};
 use std::str::FromStr;

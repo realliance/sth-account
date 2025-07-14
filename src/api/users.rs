@@ -80,11 +80,8 @@ pub struct UpdateUserRequest {
 )]
 pub async fn create_user(
     State(state): State<AppState>,
-    mut headers: HeaderMap,
     Json(request): Json<CreateUserRequest>,
-) -> Result<(StatusCode, HeaderMap, Json<UserResponse>)> {
-    super::add_rate_limit_headers(&mut headers);
-
+) -> Result<(StatusCode, Json<UserResponse>)> {
     let existing_user = user::Entity::find()
         .filter(user::Column::Username.eq(&request.username))
         .filter(user::Column::DeletedAt.is_null())
@@ -118,7 +115,7 @@ pub async fn create_user(
     let user_model = new_user.insert(state.db.as_ref()).await?;
     let user_response = UserResponse::from(user_model);
 
-    Ok((StatusCode::CREATED, headers, Json(user_response)))
+    Ok((StatusCode::CREATED, Json(user_response)))
 }
 
 #[utoipa::path(
@@ -138,9 +135,9 @@ pub async fn create_user(
 pub async fn get_user(
     State(state): State<AppState>,
     auth_session: AuthSession,
-    mut headers: HeaderMap,
     Path(user_id): Path<Uuid>,
 ) -> Result<(StatusCode, HeaderMap, Json<UserResponse>)> {
+    let mut headers = HeaderMap::new();
     super::add_rate_limit_headers(&mut headers);
 
     let current_user = auth_session
@@ -180,10 +177,10 @@ pub async fn get_user(
 pub async fn update_user(
     State(state): State<AppState>,
     auth_session: AuthSession,
-    mut headers: HeaderMap,
     Path(user_id): Path<Uuid>,
     Json(request): Json<UpdateUserRequest>,
 ) -> Result<(StatusCode, HeaderMap, Json<UserResponse>)> {
+    let mut headers = HeaderMap::new();
     super::add_rate_limit_headers(&mut headers);
 
     let current_user = auth_session
@@ -239,9 +236,9 @@ pub async fn update_user(
 pub async fn delete_user(
     State(state): State<AppState>,
     auth_session: AuthSession,
-    mut headers: HeaderMap,
     Path(user_id): Path<Uuid>,
 ) -> Result<(StatusCode, HeaderMap, Json<serde_json::Value>)> {
+    let mut headers = HeaderMap::new();
     super::add_rate_limit_headers(&mut headers);
 
     let current_user = auth_session

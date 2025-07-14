@@ -162,9 +162,9 @@ pub struct ExportMetadata {
 pub async fn request_data_export(
     State(state): State<AppState>,
     auth_session: AuthSession,
-    mut headers: HeaderMap,
     Json(request): Json<RequestDataExportRequest>,
 ) -> Result<(StatusCode, HeaderMap, Json<DataExportResponse>)> {
+    let mut headers = HeaderMap::new();
     add_rate_limit_headers(&mut headers);
 
     let current_user = auth_session
@@ -230,9 +230,9 @@ pub async fn request_data_export(
 pub async fn get_export_requests(
     State(state): State<AppState>,
     auth_session: AuthSession,
-    mut headers: HeaderMap,
     Query(query): Query<GetExportsQuery>,
 ) -> Result<(StatusCode, HeaderMap, Json<serde_json::Value>)> {
+    let mut headers = HeaderMap::new();
     add_rate_limit_headers(&mut headers);
 
     let current_user = auth_session
@@ -294,9 +294,9 @@ pub async fn get_export_requests(
 pub async fn download_export(
     State(state): State<AppState>,
     auth_session: AuthSession,
-    mut headers: HeaderMap,
     Path(export_id): Path<Uuid>,
 ) -> Result<(StatusCode, HeaderMap, Json<UserDataExport>)> {
+    let mut headers = HeaderMap::new();
     add_rate_limit_headers(&mut headers);
 
     let current_user = auth_session
@@ -354,9 +354,9 @@ pub async fn download_export(
 pub async fn cancel_export_request(
     State(state): State<AppState>,
     auth_session: AuthSession,
-    mut headers: HeaderMap,
     Path(export_id): Path<Uuid>,
 ) -> Result<(StatusCode, HeaderMap)> {
+    let mut headers = HeaderMap::new();
     add_rate_limit_headers(&mut headers);
 
     let current_user = auth_session
@@ -594,9 +594,9 @@ async fn generate_user_data_export(
 pub async fn complete_export(
     State(state): State<AppState>,
     auth_session: AuthSession,
-    mut headers: HeaderMap,
     Path(export_id): Path<Uuid>,
 ) -> Result<(StatusCode, HeaderMap, Json<DataExportResponse>)> {
+    let mut headers = HeaderMap::new();
     add_rate_limit_headers(&mut headers);
 
     let current_user = auth_session

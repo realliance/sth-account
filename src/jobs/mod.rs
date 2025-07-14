@@ -15,7 +15,6 @@ pub async fn run_job(job_type: String) -> Result<()> {
     match job_type.as_str() {
         // Cleanup jobs
         "cleanup-audit-logs" => cleanup::audit_logs::run(&db).await,
-        "cleanup-sessions" => cleanup::sessions::run(&db).await,
         "cleanup-export-files" => cleanup::export_files::run(&db).await,
         "cleanup-reports" => cleanup::reports::run(&db).await,
         "cleanup-notifications" => cleanup::notifications::run(&db).await,

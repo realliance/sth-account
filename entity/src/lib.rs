@@ -18,7 +18,6 @@ pub mod room_invitation;
 pub mod room_participants;
 pub mod system_configuration;
 pub mod user;
-pub mod user_session;
 pub mod user_statistics;
 
 pub use audit_log::Entity as AuditLog;
@@ -37,5 +36,4 @@ pub use room_invitation::Entity as RoomInvitation;
 pub use room_participants::Entity as RoomParticipants;
 pub use system_configuration::Entity as SystemConfiguration;
 pub use user::Entity as User;
-pub use user_session::Entity as UserSession;
 pub use user_statistics::Entity as UserStatistics;

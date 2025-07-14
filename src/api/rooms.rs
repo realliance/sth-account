@@ -84,9 +84,9 @@ pub struct InviteToRoomRequest {
 pub async fn create_room(
     State(state): State<AppState>,
     auth_session: AuthSession,
-    mut headers: HeaderMap,
     Json(request): Json<CreateRoomRequest>,
 ) -> Result<(StatusCode, HeaderMap, Json<PrivateRoomResponse>)> {
+    let mut headers = HeaderMap::new();
     super::add_rate_limit_headers(&mut headers);
 
     let current_user = auth_session
@@ -193,9 +193,9 @@ pub fn generate_room_code() -> String {
 pub async fn join_room(
     State(state): State<AppState>,
     auth_session: AuthSession,
-    mut headers: HeaderMap,
     Json(request): Json<JoinRoomRequest>,
 ) -> Result<(StatusCode, HeaderMap, Json<PrivateRoomResponse>)> {
+    let mut headers = HeaderMap::new();
     super::add_rate_limit_headers(&mut headers);
 
     let current_user = auth_session
@@ -290,9 +290,9 @@ pub async fn join_room(
 pub async fn leave_room(
     State(state): State<AppState>,
     auth_session: AuthSession,
-    mut headers: HeaderMap,
     Path(room_id): Path<Uuid>,
 ) -> Result<(StatusCode, HeaderMap, Json<serde_json::Value>)> {
+    let mut headers = HeaderMap::new();
     super::add_rate_limit_headers(&mut headers);
 
     let current_user = auth_session
@@ -364,8 +364,8 @@ pub async fn leave_room(
 pub async fn get_user_rooms(
     State(state): State<AppState>,
     auth_session: AuthSession,
-    mut headers: HeaderMap,
 ) -> Result<(StatusCode, HeaderMap, Json<Vec<PrivateRoomResponse>>)> {
+    let mut headers = HeaderMap::new();
     super::add_rate_limit_headers(&mut headers);
 
     let current_user = auth_session
@@ -422,10 +422,10 @@ pub async fn get_user_rooms(
 pub async fn invite_to_room(
     State(state): State<AppState>,
     auth_session: AuthSession,
-    mut headers: HeaderMap,
     Path(room_id): Path<Uuid>,
     Json(request): Json<InviteToRoomRequest>,
 ) -> Result<(StatusCode, HeaderMap, Json<serde_json::Value>)> {
+    let mut headers = HeaderMap::new();
     super::add_rate_limit_headers(&mut headers);
 
     let current_user = auth_session
@@ -538,9 +538,9 @@ pub async fn invite_to_room(
 pub async fn get_room(
     State(state): State<AppState>,
     auth_session: AuthSession,
-    mut headers: HeaderMap,
     Path(room_id): Path<Uuid>,
 ) -> Result<(StatusCode, HeaderMap, Json<PrivateRoomResponse>)> {
+    let mut headers = HeaderMap::new();
     super::add_rate_limit_headers(&mut headers);
 
     let current_user = auth_session

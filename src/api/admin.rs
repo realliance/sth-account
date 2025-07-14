@@ -144,9 +144,9 @@ pub struct SystemConfigResponse {
 pub async fn get_reports(
     State(state): State<AppState>,
     auth_session: AuthSession,
-    mut headers: HeaderMap,
     Query(query): Query<GetReportsQuery>,
 ) -> Result<(StatusCode, HeaderMap, Json<serde_json::Value>)> {
+    let mut headers = HeaderMap::new();
     add_rate_limit_headers(&mut headers);
 
     let current_user = auth_session
@@ -248,11 +248,11 @@ pub async fn get_reports(
 pub async fn update_report(
     State(state): State<AppState>,
     auth_session: AuthSession,
-    mut headers: HeaderMap,
     Path(report_id): Path<Uuid>,
     ConnectInfo(addr): ConnectInfo<SocketAddr>,
     Json(request): Json<UpdateReportRequest>,
 ) -> Result<(StatusCode, HeaderMap, Json<ReportResponse>)> {
+    let mut headers = HeaderMap::new();
     add_rate_limit_headers(&mut headers);
 
     let current_user = auth_session
@@ -358,11 +358,11 @@ pub async fn update_report(
 pub async fn moderate_user(
     State(state): State<AppState>,
     auth_session: AuthSession,
-    mut headers: HeaderMap,
     Path(user_id): Path<Uuid>,
     ConnectInfo(addr): ConnectInfo<SocketAddr>,
     Json(request): Json<UserModerationRequest>,
 ) -> Result<(StatusCode, HeaderMap, Json<serde_json::Value>)> {
+    let mut headers = HeaderMap::new();
     add_rate_limit_headers(&mut headers);
 
     let current_user = auth_session
@@ -475,8 +475,8 @@ pub async fn moderate_user(
 pub async fn get_system_config(
     State(state): State<AppState>,
     auth_session: AuthSession,
-    mut headers: HeaderMap,
 ) -> Result<(StatusCode, HeaderMap, Json<Vec<SystemConfigResponse>>)> {
+    let mut headers = HeaderMap::new();
     add_rate_limit_headers(&mut headers);
 
     let current_user = auth_session
@@ -536,10 +536,10 @@ pub async fn get_system_config(
 pub async fn update_system_config(
     State(state): State<AppState>,
     auth_session: AuthSession,
-    mut headers: HeaderMap,
     ConnectInfo(addr): ConnectInfo<SocketAddr>,
     Json(request): Json<SystemConfigRequest>,
 ) -> Result<(StatusCode, HeaderMap, Json<SystemConfigResponse>)> {
+    let mut headers = HeaderMap::new();
     add_rate_limit_headers(&mut headers);
 
     let current_user = auth_session
@@ -637,9 +637,9 @@ pub async fn update_system_config(
 pub async fn get_audit_logs(
     State(state): State<AppState>,
     auth_session: AuthSession,
-    mut headers: HeaderMap,
     Query(query): Query<GetReportsQuery>, // Reuse the same query structure
 ) -> Result<(StatusCode, HeaderMap, Json<serde_json::Value>)> {
+    let mut headers = HeaderMap::new();
     add_rate_limit_headers(&mut headers);
 
     let current_user = auth_session

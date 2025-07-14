@@ -72,9 +72,9 @@ pub struct JoinQueueAsBotRequest {
 pub async fn join_queue(
     State(state): State<AppState>,
     auth_session: AuthSession,
-    mut headers: HeaderMap,
     Json(request): Json<JoinQueueRequest>,
 ) -> Result<(StatusCode, HeaderMap, Json<QueueResponse>)> {
+    let mut headers = HeaderMap::new();
     super::add_rate_limit_headers(&mut headers);
 
     let current_user = auth_session
@@ -155,9 +155,9 @@ pub async fn join_queue(
 pub async fn join_queue_as_bot(
     State(state): State<AppState>,
     auth_session: AuthSession,
-    mut headers: HeaderMap,
     Json(request): Json<JoinQueueAsBotRequest>,
 ) -> Result<(StatusCode, HeaderMap, Json<QueueResponse>)> {
+    let mut headers = HeaderMap::new();
     super::add_rate_limit_headers(&mut headers);
 
     let current_user = auth_session
@@ -254,9 +254,9 @@ pub async fn join_queue_as_bot(
 pub async fn leave_queue(
     State(state): State<AppState>,
     auth_session: AuthSession,
-    mut headers: HeaderMap,
     Path(queue_id): Path<Uuid>,
 ) -> Result<(StatusCode, HeaderMap, Json<serde_json::Value>)> {
+    let mut headers = HeaderMap::new();
     super::add_rate_limit_headers(&mut headers);
 
     let current_user = auth_session
@@ -334,8 +334,8 @@ pub async fn leave_queue(
 pub async fn get_queue_status(
     State(state): State<AppState>,
     auth_session: AuthSession,
-    mut headers: HeaderMap,
 ) -> Result<(StatusCode, HeaderMap, Json<Vec<QueueResponse>>)> {
+    let mut headers = HeaderMap::new();
     super::add_rate_limit_headers(&mut headers);
 
     let current_user = auth_session
@@ -391,9 +391,9 @@ pub async fn get_queue_status(
 pub async fn get_lobby_queue_stats(
     State(state): State<AppState>,
     auth_session: AuthSession,
-    mut headers: HeaderMap,
     Path(lobby_id): Path<Uuid>,
 ) -> Result<(StatusCode, HeaderMap, Json<serde_json::Value>)> {
+    let mut headers = HeaderMap::new();
     super::add_rate_limit_headers(&mut headers);
 
     let current_user = auth_session

@@ -83,9 +83,9 @@ pub struct UpdateBotRequest {
 pub async fn create_bot(
     State(state): State<AppState>,
     auth_session: AuthSession,
-    mut headers: HeaderMap,
     Json(request): Json<CreateBotRequest>,
 ) -> Result<(StatusCode, HeaderMap, Json<BotResponse>)> {
+    let mut headers = HeaderMap::new();
     super::add_rate_limit_headers(&mut headers);
 
     let current_user = auth_session
@@ -142,9 +142,9 @@ pub async fn create_bot(
 )]
 pub async fn get_bot(
     State(state): State<AppState>,
-    mut headers: HeaderMap,
     Path(bot_id): Path<Uuid>,
 ) -> Result<(StatusCode, HeaderMap, Json<BotResponse>)> {
+    let mut headers = HeaderMap::new();
     super::add_rate_limit_headers(&mut headers);
 
     let bot_model = bot::Entity::find_by_id(bot_id)
@@ -174,10 +174,10 @@ pub async fn get_bot(
 pub async fn update_bot(
     State(state): State<AppState>,
     auth_session: AuthSession,
-    mut headers: HeaderMap,
     Path(bot_id): Path<Uuid>,
     Json(request): Json<UpdateBotRequest>,
 ) -> Result<(StatusCode, HeaderMap, Json<BotResponse>)> {
+    let mut headers = HeaderMap::new();
     super::add_rate_limit_headers(&mut headers);
 
     let current_user = auth_session
@@ -251,9 +251,9 @@ pub async fn update_bot(
 pub async fn delete_bot(
     State(state): State<AppState>,
     auth_session: AuthSession,
-    mut headers: HeaderMap,
     Path(bot_id): Path<Uuid>,
 ) -> Result<(StatusCode, HeaderMap, Json<serde_json::Value>)> {
+    let mut headers = HeaderMap::new();
     super::add_rate_limit_headers(&mut headers);
 
     let current_user = auth_session
@@ -297,9 +297,9 @@ pub async fn delete_bot(
 pub async fn get_user_bots(
     State(state): State<AppState>,
     auth_session: AuthSession,
-    mut headers: HeaderMap,
     Path(user_id): Path<Uuid>,
 ) -> Result<(StatusCode, HeaderMap, Json<Vec<BotResponse>>)> {
+    let mut headers = HeaderMap::new();
     super::add_rate_limit_headers(&mut headers);
 
     let current_user = auth_session

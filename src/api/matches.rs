@@ -151,10 +151,10 @@ pub struct BotStatsResponse {
 pub async fn get_user_match_history(
     State(state): State<AppState>,
     auth_session: AuthSession,
-    mut headers: HeaderMap,
     Path(user_id): Path<Uuid>,
     Query(query): Query<MatchQuery>,
 ) -> Result<(StatusCode, HeaderMap, Json<MatchHistoryResponse>)> {
+    let mut headers = HeaderMap::new();
     super::add_rate_limit_headers(&mut headers);
 
     let current_user = auth_session
@@ -228,10 +228,10 @@ pub async fn get_user_match_history(
 pub async fn get_bot_match_history(
     State(state): State<AppState>,
     auth_session: AuthSession,
-    mut headers: HeaderMap,
     Path(bot_id): Path<Uuid>,
     Query(query): Query<MatchQuery>,
 ) -> Result<(StatusCode, HeaderMap, Json<MatchHistoryResponse>)> {
+    let mut headers = HeaderMap::new();
     super::add_rate_limit_headers(&mut headers);
 
     let current_user = auth_session
@@ -309,9 +309,9 @@ pub async fn get_bot_match_history(
 pub async fn get_match(
     State(state): State<AppState>,
     auth_session: AuthSession,
-    mut headers: HeaderMap,
     Path(match_id): Path<Uuid>,
 ) -> Result<(StatusCode, HeaderMap, Json<MatchResponse>)> {
+    let mut headers = HeaderMap::new();
     super::add_rate_limit_headers(&mut headers);
 
     let current_user = auth_session
@@ -374,9 +374,9 @@ pub async fn get_match(
 pub async fn get_user_stats(
     State(state): State<AppState>,
     auth_session: AuthSession,
-    mut headers: HeaderMap,
     Path(user_id): Path<Uuid>,
 ) -> Result<(StatusCode, HeaderMap, Json<UserStatsResponse>)> {
+    let mut headers = HeaderMap::new();
     super::add_rate_limit_headers(&mut headers);
 
     let current_user = auth_session
@@ -486,9 +486,9 @@ pub async fn get_user_stats(
 pub async fn get_bot_stats(
     State(state): State<AppState>,
     auth_session: AuthSession,
-    mut headers: HeaderMap,
     Path(bot_id): Path<Uuid>,
 ) -> Result<(StatusCode, HeaderMap, Json<BotStatsResponse>)> {
+    let mut headers = HeaderMap::new();
     super::add_rate_limit_headers(&mut headers);
 
     let current_user = auth_session

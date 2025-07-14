@@ -18,5 +18,4 @@ pub mod room_invitation;
 pub mod room_participants;
 pub mod system_configuration;
 pub mod user;
-pub mod user_session;
 pub mod user_statistics;

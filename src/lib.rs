@@ -8,7 +8,6 @@ pub mod jobs;
 pub mod openapi;
 pub mod queue;
 pub mod service;
-pub mod session_store;
 #[cfg(test)]
 pub mod test_utils;
 pub mod worker;

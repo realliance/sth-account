@@ -13,7 +13,6 @@ mod jobs;
 mod openapi;
 mod queue;
 mod service;
-mod session_store;
 #[cfg(test)]
 mod test_utils;
 mod worker;

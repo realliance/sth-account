@@ -1,11 +1,11 @@
 use axum::{
-    extract::{Path, State},
+    extract::{Path, Query, State},
     http::{HeaderMap, StatusCode},
     response::Json,
 };
 use sea_orm::{ActiveModelTrait, ColumnTrait, EntityTrait, QueryFilter, Set};
 use serde::{Deserialize, Serialize};
-use utoipa::ToSchema;
+use utoipa::{IntoParams, ToSchema};
 use uuid::Uuid;
 
 use crate::{
@@ -34,6 +34,12 @@ impl From<lobby_pool::Model> for LobbyResponse {
             active: lobby.active,
         }
     }
+}
+
+#[derive(Debug, Deserialize, IntoParams)]
+pub struct GetAllLobbiesQuery {
+    #[param(example = false)]
+    pub include_inactive: Option<bool>,
 }
 
 #[derive(Debug, Deserialize, ToSchema)]
@@ -92,9 +98,9 @@ impl From<String> for LobbyPreset {
 pub async fn create_lobby(
     State(state): State<AppState>,
     auth_session: AuthSession,
-    mut headers: HeaderMap,
     Json(request): Json<CreateLobbyRequest>,
 ) -> Result<(StatusCode, HeaderMap, Json<LobbyResponse>)> {
+    let mut headers = HeaderMap::new();
     super::add_rate_limit_headers(&mut headers);
 
     let current_user = auth_session
@@ -144,8 +150,8 @@ pub async fn create_lobby(
 /// Get all lobbies
 pub async fn get_lobbies(
     State(state): State<AppState>,
-    mut headers: HeaderMap,
 ) -> Result<(StatusCode, HeaderMap, Json<Vec<LobbyResponse>>)> {
+    let mut headers = HeaderMap::new();
     super::add_rate_limit_headers(&mut headers);
 
     // Return only active lobbies for public API
@@ -164,33 +170,38 @@ pub async fn get_lobbies(
     get,
     path = "/v1/all-lobbies",
     tag = "Lobbies",
+    params(
+        GetAllLobbiesQuery
+    ),
     responses(
-        (status = 200, description = "All lobbies retrieved successfully", body = Vec<LobbyResponse>),
+        (status = 200, description = "Active lobbies retrieved successfully (admins can include inactive with include_inactive=true)", body = Vec<LobbyResponse>),
         (status = 401, description = "Authentication required"),
-        (status = 403, description = "Only admins can view all lobbies"),
         (status = 500, description = "Internal server error")
     )
 )]
-/// Get all lobbies (Admin view - includes inactive)
+/// Get all active lobbies (admins can include inactive with include_inactive=true)
 pub async fn get_all_lobbies(
     State(state): State<AppState>,
     auth_session: AuthSession,
-    mut headers: HeaderMap,
+    Query(query): Query<GetAllLobbiesQuery>,
 ) -> Result<(StatusCode, HeaderMap, Json<Vec<LobbyResponse>>)> {
+    let mut headers = HeaderMap::new();
     super::add_rate_limit_headers(&mut headers);
 
     let current_user = auth_session
         .user
         .ok_or_else(|| AppError::Auth("Authentication required".to_string()))?;
 
-    // Only admins can see all lobbies
-    if current_user.role != "Admin" {
-        return Err(AppError::Forbidden(
-            "Only admins can view all lobbies".to_string(),
-        ));
+    // Determine whether to include inactive lobbies
+    let include_inactive = query.include_inactive.unwrap_or(false) && current_user.role == "Admin";
+
+    // Build query - filter to active lobbies unless admin requested inactive ones
+    let mut query_builder = lobby_pool::Entity::find();
+    if !include_inactive {
+        query_builder = query_builder.filter(lobby_pool::Column::Active.eq(true));
     }
 
-    let lobbies = lobby_pool::Entity::find().all(state.db.as_ref()).await?;
+    let lobbies = query_builder.all(state.db.as_ref()).await?;
 
     let lobby_responses: Vec<LobbyResponse> =
         lobbies.into_iter().map(LobbyResponse::from).collect();
@@ -214,9 +225,9 @@ pub async fn get_all_lobbies(
 /// Get a specific lobby
 pub async fn get_lobby(
     State(state): State<AppState>,
-    mut headers: HeaderMap,
     Path(lobby_id): Path<Uuid>,
 ) -> Result<(StatusCode, HeaderMap, Json<LobbyResponse>)> {
+    let mut headers = HeaderMap::new();
     super::add_rate_limit_headers(&mut headers);
 
     let lobby_model = lobby_pool::Entity::find_by_id(lobby_id)
@@ -249,10 +260,10 @@ pub async fn get_lobby(
 pub async fn update_lobby(
     State(state): State<AppState>,
     auth_session: AuthSession,
-    mut headers: HeaderMap,
     Path(lobby_id): Path<Uuid>,
     Json(request): Json<UpdateLobbyRequest>,
 ) -> Result<(StatusCode, HeaderMap, Json<LobbyResponse>)> {
+    let mut headers = HeaderMap::new();
     super::add_rate_limit_headers(&mut headers);
 
     let current_user = auth_session
@@ -321,9 +332,9 @@ pub async fn update_lobby(
 pub async fn delete_lobby(
     State(state): State<AppState>,
     auth_session: AuthSession,
-    mut headers: HeaderMap,
     Path(lobby_id): Path<Uuid>,
 ) -> Result<(StatusCode, HeaderMap, Json<serde_json::Value>)> {
+    let mut headers = HeaderMap::new();
     super::add_rate_limit_headers(&mut headers);
 
     let current_user = auth_session

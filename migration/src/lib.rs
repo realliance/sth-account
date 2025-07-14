@@ -6,7 +6,6 @@ mod m20240101_000003_create_game_history;
 mod m20240101_000004_create_lobby_pool;
 mod m20240101_000005_create_match;
 mod m20240101_000006_create_queue;
-mod m20240101_000007_create_user_session;
 mod m20240101_000008_create_report;
 mod m20240101_000009_create_private_room;
 mod m20240101_000010_create_room_invitation;
@@ -18,7 +17,6 @@ mod m20240101_000015_create_audit_log;
 mod m20240101_000016_create_data_export_requests;
 mod m20240101_000017_create_bot_statistics;
 mod m20240101_000018_create_system_configuration;
-mod m20240101_000019_add_session_data_field;
 
 pub struct Migrator;
 
@@ -32,7 +30,6 @@ impl MigratorTrait for Migrator {
             Box::new(m20240101_000004_create_lobby_pool::Migration),
             Box::new(m20240101_000005_create_match::Migration),
             Box::new(m20240101_000006_create_queue::Migration),
-            Box::new(m20240101_000007_create_user_session::Migration),
             Box::new(m20240101_000008_create_report::Migration),
             Box::new(m20240101_000009_create_private_room::Migration),
             Box::new(m20240101_000010_create_room_invitation::Migration),
@@ -44,7 +41,6 @@ impl MigratorTrait for Migrator {
             Box::new(m20240101_000016_create_data_export_requests::Migration),
             Box::new(m20240101_000017_create_bot_statistics::Migration),
             Box::new(m20240101_000018_create_system_configuration::Migration),
-            Box::new(m20240101_000019_add_session_data_field::Migration),
         ]
     }
 }

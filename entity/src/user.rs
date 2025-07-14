@@ -37,8 +37,6 @@ pub enum Relation {
     PrivateRoom,
     #[sea_orm(has_many = "super::system_configuration::Entity")]
     SystemConfiguration,
-    #[sea_orm(has_many = "super::user_session::Entity")]
-    UserSession,
     #[sea_orm(has_one = "super::user_statistics::Entity")]
     UserStatistics,
 }
@@ -70,12 +68,6 @@ impl Related<super::private_room::Entity> for Entity {
 impl Related<super::system_configuration::Entity> for Entity {
     fn to() -> RelationDef {
         Relation::SystemConfiguration.def()
-    }
-}
-
-impl Related<super::user_session::Entity> for Entity {
-    fn to() -> RelationDef {
-        Relation::UserSession.def()
     }
 }
 

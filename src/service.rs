@@ -1,8 +1,5 @@
 use axum::http::{HeaderName, HeaderValue, Method, header};
-use axum::{
-    Router,
-    routing::{delete, get, patch, post},
-};
+use axum::{Router, routing::get};
 use axum_login::AuthManagerLayerBuilder;
 use std::sync::Arc;
 use tower::ServiceBuilder;
@@ -10,7 +7,13 @@ use tower_http::{
     cors::CorsLayer,
     trace::{DefaultMakeSpan, DefaultOnRequest, DefaultOnResponse, TraceLayer},
 };
-use tower_sessions::{Expiry, SessionManagerLayer};
+use tower_sessions::{Expiry, SessionManagerLayer, SessionStore};
+use tower_sessions::session::{Id, Record};
+use tower_sessions::session_store::Result as SessionResult;
+use async_trait::async_trait;
+use tower_sessions_memory_store::MemoryStore;
+use tower_sessions_redis_store::fred::types::config::Config as RedisConfig;
+use tower_sessions_redis_store::{RedisStore, fred::prelude::*};
 use tracing::{debug, info};
 use utoipa::openapi::{Info, OpenApi};
 use utoipa_axum::{router::OpenApiRouter, routes};
@@ -21,15 +24,45 @@ use crate::{
         notifications, rooms, users,
     },
     auth::Backend,
-    config::Config,
+    config::{Config, SessionStore as SessionStoreConfig},
     database,
     error::Result,
     health, openapi,
     queue::{QueueProvider, RealQueueProvider, TestQueueProvider},
-    session_store::SeaOrmSessionStore,
 };
 use sea_orm::DatabaseConnection;
 use std::env;
+
+/// Wrapper for boxed session store to satisfy trait bounds
+#[derive(Debug, Clone)]
+pub struct BoxedSessionStore {
+    inner: Arc<dyn SessionStore>,
+}
+
+impl BoxedSessionStore {
+    pub fn new(store: Box<dyn SessionStore>) -> Self {
+        Self { inner: Arc::from(store) }
+    }
+}
+
+#[async_trait]
+impl SessionStore for BoxedSessionStore {
+    async fn create(&self, session_record: &mut Record) -> SessionResult<()> {
+        self.inner.create(session_record).await
+    }
+
+    async fn save(&self, session_record: &Record) -> SessionResult<()> {
+        self.inner.save(session_record).await
+    }
+
+    async fn load(&self, session_id: &Id) -> SessionResult<Option<Record>> {
+        self.inner.load(session_id).await
+    }
+
+    async fn delete(&self, session_id: &Id) -> SessionResult<()> {
+        self.inner.delete(session_id).await
+    }
+}
 
 /// Shared application state
 #[derive(Clone)]
@@ -83,11 +116,30 @@ pub async fn run_service() -> Result<()> {
         queue: queue_provider,
     };
 
-    // Session store using our custom SeaORM implementation
-    let session_store = SeaOrmSessionStore::new(db.clone());
+    // Session store configuration
+    let session_store: Box<dyn SessionStore> = match &config.session_store {
+        SessionStoreConfig::Memory => {
+            info!("Using memory session store");
+            Box::new(MemoryStore::default())
+        }
+        SessionStoreConfig::Redis { url } => {
+            info!("Using Redis session store at: {}", url);
+            let redis_config = RedisConfig::from_url(url)
+                .map_err(|e| crate::error::AppError::Service(format!("Invalid Redis URL: {e}")))?;
+            let pool = Pool::new(redis_config, None, None, None, 6).map_err(|e| {
+                crate::error::AppError::Service(format!("Failed to create Redis pool: {e}"))
+            })?;
+            pool.connect();
+            pool.wait_for_connect().await.map_err(|e| {
+                crate::error::AppError::Service(format!("Failed to connect to Redis: {e}"))
+            })?;
+            Box::new(RedisStore::new(pool))
+        }
+    };
 
-    let session_layer = SessionManagerLayer::new(session_store)
-        .with_secure(false) // Set to true in production with HTTPS
+    let wrapped_session_store = BoxedSessionStore::new(session_store);
+    let session_layer = SessionManagerLayer::new(wrapped_session_store)
+        .with_secure(cfg!(not(debug_assertions))) // true in release, false in debug
         .with_expiry(Expiry::OnInactivity(time::Duration::hours(24)));
 
     // Auth backend

@@ -27,6 +27,7 @@ jsonwebtoken = "9.2"
 axum-login = "0.17"
 tower-sessions = "0.14"
 tower-sessions-memory-store = "0.14"
+tower-sessions-redis-store = "0.16"
 async-trait = "0.1"
 time = "0.3"
 amqprs = "2.1"
@@ -56,7 +57,7 @@ features = [
 [dev-dependencies]
 tokio-test = "0.4"
 tower = { version = "0.5", features = ["util"] }
-hyper = { version = "0.14", features = ["full"] }
+hyper = { version = "1.0", features = ["full"] }
 axum-test = "17"
 reqwest = { version = "0.12", features = ["json", "cookies"] }
 reqwest_cookie_store = "0.8"

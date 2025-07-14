@@ -24,10 +24,8 @@ pub async fn run(db: &sea_orm::DatabaseConnection) -> Result<()> {
         .count(db)
         .await?;
 
-    let active_sessions = entity::user_session::Entity::find()
-        .filter(entity::user_session::Column::Status.eq("Active"))
-        .count(db)
-        .await?;
+    // Note: Active sessions now tracked in Redis/Memory via tower-sessions
+    // Can be queried from Redis directly if needed for statistics
 
     // Get queue statistics
     let queue_stats = get_queue_statistics(db).await?;
@@ -45,7 +43,6 @@ pub async fn run(db: &sea_orm::DatabaseConnection) -> Result<()> {
     info!("Daily platform statistics for {}:", today);
     info!("  Total active users: {}", total_users);
     info!("  Total bots: {} ({} live)", total_bots, live_bots);
-    info!("  Active sessions: {}", active_sessions);
     info!("  Queue statistics: {:?}", queue_stats);
     info!("  Match statistics: {:?}", match_stats);
     info!("  Room statistics: {:?}", room_stats);

@@ -100,9 +100,9 @@ pub struct CreateNotificationRequest {
 pub async fn get_notifications(
     State(state): State<AppState>,
     auth_session: AuthSession,
-    mut headers: HeaderMap,
     Query(query): Query<GetNotificationsQuery>,
 ) -> Result<(StatusCode, HeaderMap, Json<NotificationsResponse>)> {
+    let mut headers = HeaderMap::new();
     add_rate_limit_headers(&mut headers);
 
     let current_user = auth_session
@@ -177,9 +177,9 @@ pub async fn get_notifications(
 pub async fn mark_notifications_as_read(
     State(state): State<AppState>,
     auth_session: AuthSession,
-    mut headers: HeaderMap,
     Json(request): Json<MarkAsReadRequest>,
 ) -> Result<(StatusCode, HeaderMap, Json<serde_json::Value>)> {
+    let mut headers = HeaderMap::new();
     add_rate_limit_headers(&mut headers);
 
     let current_user = auth_session
@@ -230,8 +230,8 @@ pub async fn mark_notifications_as_read(
 pub async fn mark_all_notifications_as_read(
     State(state): State<AppState>,
     auth_session: AuthSession,
-    mut headers: HeaderMap,
 ) -> Result<(StatusCode, HeaderMap, Json<serde_json::Value>)> {
+    let mut headers = HeaderMap::new();
     add_rate_limit_headers(&mut headers);
 
     let current_user = auth_session
@@ -277,9 +277,9 @@ pub async fn mark_all_notifications_as_read(
 pub async fn delete_notification(
     State(state): State<AppState>,
     auth_session: AuthSession,
-    mut headers: HeaderMap,
     Path(notification_id): Path<Uuid>,
 ) -> Result<(StatusCode, HeaderMap)> {
+    let mut headers = HeaderMap::new();
     add_rate_limit_headers(&mut headers);
 
     let current_user = auth_session
@@ -317,8 +317,8 @@ pub async fn delete_notification(
 pub async fn get_notification_summary(
     State(state): State<AppState>,
     auth_session: AuthSession,
-    mut headers: HeaderMap,
 ) -> Result<(StatusCode, HeaderMap, Json<serde_json::Value>)> {
+    let mut headers = HeaderMap::new();
     add_rate_limit_headers(&mut headers);
 
     let current_user = auth_session
@@ -390,9 +390,9 @@ pub async fn get_notification_summary(
 pub async fn create_notification(
     State(state): State<AppState>,
     auth_session: AuthSession,
-    mut headers: HeaderMap,
     Json(request): Json<CreateNotificationRequest>,
 ) -> Result<(StatusCode, HeaderMap, Json<NotificationResponse>)> {
+    let mut headers = HeaderMap::new();
     add_rate_limit_headers(&mut headers);
 
     let current_user = auth_session
